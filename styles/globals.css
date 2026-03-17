@@ -15,6 +15,14 @@
   --radius: 8px;
   --shadow: 0 8px 32px rgba(0,0,0,0.4);
   --transition: 0.2s ease;
+
+  /* ===== 背景图配置 =====
+     将下面的 URL 替换为你喜欢的图片地址
+     推荐使用 Unsplash：https://unsplash.com
+     例如：https://images.unsplash.com/photo-xxx?w=1920&q=80
+  ===== */
+  --bg-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=80');
+  --bg-overlay: rgba(13, 17, 23, 0.82);
 }
 
 * {
@@ -33,6 +41,13 @@ body {
   color: var(--text-primary);
   line-height: 1.7;
   min-height: 100vh;
+
+  /* 背景图 */
+  background-image: var(--bg-overlay), var(--bg-image);
+  background-size: cover;
+  background-position: center top;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
 a {
@@ -66,4 +81,3 @@ a:hover {
 ::selection {
   background: rgba(88, 166, 255, 0.3);
 }
-

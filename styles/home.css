@@ -7,56 +7,102 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ===== Hero 区域 ===== */
 .hero {
-  padding: 60px 0 48px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 40px;
+  padding: 80px 0 64px;
+  margin-bottom: 48px;
+  position: relative;
+  text-align: left;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    var(--accent) 30%,
+    rgba(88, 166, 255, 0.3) 70%,
+    transparent
+  );
 }
 
 .hero-tag {
   font-family: var(--font-code);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--accent);
-  margin-bottom: 16px;
-  opacity: 0.8;
+  margin-bottom: 20px;
+  opacity: 0.9;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.08em;
+}
+
+.hero-tag::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
 }
 
 .hero-title {
   font-family: var(--font-serif);
-  font-size: clamp(2rem, 5vw, 3rem);
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
   font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1.2;
-  margin-bottom: 12px;
-  background: linear-gradient(135deg, #e6edf3 30%, #58a6ff);
+  line-height: 1.15;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #ffffff 20%, #58a6ff 60%, #79b8ff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  text-shadow: none;
+  filter: drop-shadow(0 0 30px rgba(88,166,255,0.15));
 }
 
 .hero-sub {
   font-size: 1.05rem;
-  color: var(--text-secondary);
-  margin-bottom: 24px;
+  color: rgba(139, 148, 158, 0.9);
+  margin-bottom: 28px;
+  max-width: 480px;
+  line-height: 1.8;
 }
 
 .hero-stats {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  font-size: 0.9rem;
+  gap: 16px;
+  font-size: 0.88rem;
   color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  padding: 10px 20px;
+  border-radius: 40px;
 }
 
 .hero-stats strong {
   color: var(--accent);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  font-family: var(--font-code);
 }
 
 .hero-stats .divider {
-  color: var(--text-muted);
+  color: var(--border);
 }
 
+/* ===== 分类筛选 ===== */
 .category-filter {
   display: flex;
   flex-wrap: wrap;
@@ -67,8 +113,9 @@
 .cat-btn {
   padding: 6px 16px;
   border-radius: 20px;
-  border: 1px solid var(--border);
-  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(6px);
   color: var(--text-secondary);
   font-size: 0.85rem;
   cursor: pointer;
@@ -79,6 +126,7 @@
 .cat-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
+  background: rgba(88, 166, 255, 0.06);
 }
 
 .cat-btn.active {
@@ -88,6 +136,7 @@
   font-weight: 600;
 }
 
+/* ===== 空状态 ===== */
 .empty-state {
   text-align: center;
   padding: 80px 24px;
@@ -113,8 +162,10 @@
 }
 
 .post-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  background: rgba(28, 33, 40, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius);
   overflow: hidden;
   transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
@@ -129,15 +180,16 @@
 }
 
 .post-card:hover {
-  border-color: var(--accent);
+  border-color: rgba(88, 166, 255, 0.5);
   transform: translateY(-4px);
-  box-shadow: 0 16px 48px rgba(88, 166, 255, 0.12);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(88,166,255,0.1);
 }
 
 /* ===== 封面图 ===== */
 .card-cover-link {
   display: block;
   text-decoration: none;
+  overflow: hidden;
 }
 
 .card-cover {
@@ -152,10 +204,9 @@
 }
 
 .post-card:hover .card-cover {
-  transform: scale(1.04);
+  transform: scale(1.05);
 }
 
-/* 无封面时的占位符 */
 .card-cover-placeholder {
   position: absolute;
   inset: 0;
@@ -165,16 +216,16 @@
   justify-content: center;
   gap: 10px;
   padding: 16px;
-  background: linear-gradient(160deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.2) 100%);
+  background: linear-gradient(160deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.3) 100%);
 }
 
 .cover-category-text {
   font-family: var(--font-code);
   font-size: 0.72rem;
-  color: rgba(88, 166, 255, 0.7);
+  color: rgba(88, 166, 255, 0.8);
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  border: 1px solid rgba(88, 166, 255, 0.25);
+  border: 1px solid rgba(88, 166, 255, 0.3);
   padding: 3px 10px;
   border-radius: 20px;
 }
@@ -183,7 +234,7 @@
   font-family: var(--font-serif);
   font-size: 1rem;
   font-weight: 600;
-  color: rgba(230, 237, 243, 0.85);
+  color: rgba(230, 237, 243, 0.9);
   text-align: center;
   line-height: 1.5;
   display: -webkit-box;
@@ -269,7 +320,7 @@
 
 .card-footer {
   padding-top: 10px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(255,255,255,0.06);
 }
 
 .read-more {
