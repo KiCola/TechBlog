@@ -17,7 +17,7 @@ export default function RootLayout({ children }) {
   const bgStyle = `
     body {
       background-image:
-        linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.82)),
+        linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.2)),
         url('${basePath}/wallhaven-e8996r.jpg');
     }
   `;
