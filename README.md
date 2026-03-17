@@ -179,7 +179,7 @@ tags:
 ### 代码块（支持语法高亮）
 
 ````markdown
-```javascript
+​```javascript
 function hello(name) {
   console.log(`Hello, ${name}!`);
 }
@@ -199,7 +199,7 @@ npm install react
 
 ### 表格
 
-```markdown
+​```markdown
 | 列1 | 列2 | 列3 |
 |-----|-----|-----|
 | 数据1 | 数据2 | 数据3 |
@@ -343,6 +343,7 @@ const bgStyle = `
 ### 调整遮罩透明度
 
 `rgba(13, 17, 23, 0.82)` 中最后的数字控制遮罩深度：
+
 - `0.6` → 图片较亮，文字可能不清晰
 - `0.82` → 默认，图片较暗，文字清晰
 - `0.92` → 图片很暗，接近纯色背景
