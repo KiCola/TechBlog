@@ -17,11 +17,12 @@
   --transition: 0.2s ease;
 
   /* ===== 背景图配置 =====
-     将下面的 URL 替换为你喜欢的图片地址
-     推荐使用 Unsplash：https://unsplash.com
-     例如：https://images.unsplash.com/photo-xxx?w=1920&q=80
+     本地图片：将图片放入 public/ 目录，填写文件名即可
+     例如图片放在 public/bg.jpg，则填写 '/bg.jpg'
+     注意：部署到 GitHub Pages 后需要加 basePath 前缀
+     例如：'/TechBlog/bg.jpg'
   ===== */
-  --bg-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=80');
+  --bg-image: url('/wallhaven-e8996r.jpg');
   --bg-overlay: rgba(13, 17, 23, 0.82);
 }
 
