@@ -3,6 +3,8 @@ import '../styles/app.css';
 import 'katex/dist/katex.min.css';
 import Navbar from '../components/Navbar';
 
+const basePath = process.env.NODE_ENV === 'production' ? '/TechBlog' : '';
+
 export const metadata = {
   title: {
     default: '技术博客',
@@ -12,6 +14,14 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  const bgStyle = `
+    body {
+      background-image:
+        linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.82)),
+        url('${basePath}/wallhaven-e8996r.jpg');
+    }
+  `;
+
   return (
     <html lang="zh-CN">
       <head>
@@ -21,6 +31,7 @@ export default function RootLayout({ children }) {
           href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap"
           rel="stylesheet"
         />
+        <style dangerouslySetInnerHTML={{ __html: bgStyle }} />
       </head>
       <body>
         <div className="app">

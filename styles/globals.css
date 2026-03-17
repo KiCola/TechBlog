@@ -22,7 +22,7 @@
      注意：部署到 GitHub Pages 后需要加 basePath 前缀
      例如：'/TechBlog/bg.jpg'
   ===== */
-  --bg-image: url('/wallhaven-e8996r.jpg');
+  --bg-image: none;
   --bg-overlay: rgba(13, 17, 23, 0.82);
 }
 
