@@ -162,7 +162,7 @@ tags:
 [链接文字](https://example.com)
 
 ![图片描述](图片URL)
-![本地图片](/images/photo.jpg)
+![本地图片](/photo.jpg)
 ```
 
 ### 列表
@@ -186,7 +186,7 @@ tags:
 ### 代码块（支持语法高亮）
 
 ````markdown
-​```javascript
+```javascript
 function hello(name) {
   console.log(`Hello, ${name}!`);
 }
@@ -206,7 +206,7 @@ npm install react
 
 ### 表格
 
-​```markdown
+```markdown
 | 列1 | 列2 | 列3 |
 |-----|-----|-----|
 | 数据1 | 数据2 | 数据3 |

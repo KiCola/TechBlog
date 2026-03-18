@@ -52,4 +52,4 @@ cover: /wallhaven-vqd7z5.png
 
 ## Post Thinkings
 
-在写下这篇文章之前，我刚在线上参与了Lumina具身智能社区的论文研读，旁听了BIGAI的几位同龄人（上下不超过两岁吧）的Promising and Creative的论文工作，不免生发了很多思考，记录在文末吧。![image-20260318171310824](../public/image-20260318171310824.png)
+在写下这篇文章之前，我刚在线上参与了Lumina具身智能社区的论文研读，旁听了BIGAI的几位同龄人（上下不超过两岁吧）的Promising and Creative的论文工作，不免生发了很多思考，记录在文末吧。![image-20260318171310824](/image-20260318171310824.png)
