@@ -77,13 +77,149 @@ https://hugwbc.github.io/
 
 #### 2.人形机器人配置
 
+##### 结构
+
 ![image-20260319150850360](HugWBC/image-20260319150850360.png)
 
 上图为HUGWBC使用的H1机器人，如图所示，H1共有19个关节，其中上肢有8个关节，腰部有1个关节，腿部有10个关节
 
+![img](HugWBC/062631298315422287588c3ed9562663_6580x4482.png)
 
+![image-20260319155049637](HugWBC/image-20260319155049637.png)
+
+这是官网上的H1说明
+
+作为一个人形机器人平台，H1的设计无疑是优秀的：较为稳定的机身，尽可能精简的全身关节，使得我们的强化学习可以跑在更加稳定的实体上
+
+##### 参数配置
+
+我们这里的参数主要针对机器人的仿真参数和物理限制，主要就是PD和torque_limit
+
+```python
+    class control( LeggedRobotCfg.control ):
+        # PD Drive parameters:
+        control_type = 'P'
+          # PD Drive parameters:
+        stiffness = {'hip_yaw': 200,
+                     'hip_roll': 200,
+                     'hip_pitch': 200,
+                     'knee': 300,
+                     'ankle': 40,
+                     'torso': 300,
+                     'shoulder_pitch': 20,
+                     'shoulder_roll': 20,
+                     'shoulder_yaw': 20,
+                     "elbow": 20,
+                     }  # [N*m/rad]
+        damping = {  'hip_yaw': 5,
+                     'hip_roll': 5,
+                     'hip_pitch': 5,
+                     'knee': 6,
+                     'ankle': 2,
+                     'torso': 6,
+                     'shoulder_pitch': 0.5,
+                     'shoulder_roll': 0.5,
+                     'shoulder_yaw': 0.5,
+                     "elbow": 0.5,
+                     }  # [N*m/rad]  # [N*m*s/rad]
+        torque_limits = {
+                     'hip_yaw': 180,
+                     'hip_roll': 180,
+                     'hip_pitch': 180,
+                     'knee': 280,
+                     'ankle': 38,
+                     'torso': 180,
+                     'shoulder_pitch': 35,
+                     'shoulder_roll': 35,
+                     'shoulder_yaw': 15,
+                     "elbow": 35,
+                     }
+        # action scale: target angle = actionScale * action + defaultAngle
+        action_scale = 0.25
+        # decimation: Number of control action updates @ sim DT per policy DT
+        decimation = 4
+```
+
+下面主要借着HUGWBC来学学PD参数
+
+###### PD
+
+![img](HugWBC/v2-62c56b1eb4c053d58894740a8ce250a0_1440w.jpg)
+
+在HUGWBC中，PD参数在经历初始化后，传入到力矩计算单元：
+
+```python
+def _compute_torques(self, actions):
+    """ Compute torques from actions.
+        Actions can be interpreted as position or velocity targets given to a PD controller, or directly as scaled torques.
+        [NOTE]: torques must have the same dimension as the number of DOFs, even if some DOFs are not actuated.
+
+    Args:
+        actions (torch.Tensor): Actions
+
+    Returns:
+        [torch.Tensor]: Torques sent to the simulation
+    """
+    #pd controller
+    actions_scaled = actions * self.cfg.control.action_scale
+    if self.cfg.domain_rand.randomize_gains:
+        p_gains = self.randomized_p_gains
+        d_gains = self.randomized_d_gains
+        motor_strength = self.randomized_motor_strength
+    else:
+        p_gains = self.p_gains.repeat(self.num_envs, 1)
+        d_gains = self.d_gains.repeat(self.num_envs, 1)
+        motor_strength = self.motor_strength
+    control_type = self.cfg.control.control_type
+    if control_type=="P":
+        torques = p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos + self.motor_offsets) - d_gains*self.dof_vel
+    else:
+        raise NameError(f"Unknown controller type: {control_type}")
+    
+    torques *= motor_strength
+    torque_limits = self.custom_torque_limits
+    return torch.clip(torques, -torque_limits, torque_limits)
+```
+
+核心部分当然是这段代码：
+
+```python
+torques = p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos + self.motor_offsets) - d_gains*self.dof_vel
+```
+
+这就是PD控制器的核心，其中，actions_scaled + self.default_dof_pos+ self.motor_offsets 表示目标位置，self.dof_pos表示关节当前位置，二者作差得到偏差值，作为比例项；self.dof_vel表示当前关节速度，给出负值是让它作为阻尼阻止关节的快速运动，从而减少超调和振荡
+
+显然，在这个计算中，我们默认了期望速度为0,这主要基于下面的考量：
+
++ 在每个控制周期内期望位置视为恒定；
+
++ 微分项主要用来提供速度阻尼，而非提高跟踪精度；
+
++ 策略输出的位置变化相对平滑，且控制频率足够高；
+
++ 期望速度信息不可靠或非必需。
+
+总而言之，通过PD参数设计，机器人将动作转化为力矩，继而通过下面的pipeline输入到仿真机器人或者实体机器人中：
+
+```python
+def step(self,actions):
+    #......
+	for _ in range(self.cfg.control.decimation):
+        self.torques = self._compute_torques(actions_after_push).view(self.torques.shape)
+        self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
+        self.gym.simulate(self.sim)
+    #......
+```
+
+最终通过gym的API将电机转矩送给仿真实体，让仿真的机器人动起来。
+
+可见，机器人的PD参数至关重要，在实践中，如果机器人的PD参数不合适，会有高频振荡抑或无法行动的情况发生，此时可能会触发仿真环境中机器人频繁的reset重置，从而使得机器人存活时间过低，强化学习训练必然失败。
+
+PD参数并非唯一一套参数，事实上只要是合理的PD参数，理论上能使机器人在仿真环境中正常存活、与环境进行交互的，都可以在机器人上做配置——HUGWBC中针对H1的PD配置就是如此。当然，也有工作专门针对机器人的PD参数做调整，比如`BeyondMimic`就根据G1电机的型号做了特殊配置，这一切的目的都是从配置层面上保证机器人运动的流畅性和鲁棒性。
 
 #### 3.奖励函数设计
+
+
 
 #### 4.强化学习算法设计
 
