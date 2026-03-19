@@ -1,0 +1,505 @@
+2:I[2972,["972","static/chunks/972-0f0cbd81402c346b.js","333","static/chunks/app/posts/%5Bslug%5D/page-385e7c90f9aeb3f8.js"],""]
+4:I[4707,[],""]
+6:I[6423,[],""]
+7:I[2516,["972","static/chunks/972-0f0cbd81402c346b.js","185","static/chunks/app/layout-02a0f3db349a0c34.js"],"default"]
+3:T4556,<h1>TechBlog - 个人技术博客</h1>
+<p>基于 Next.js 14 构建的静态技术博客，支持 Markdown 写作、LaTeX 公式、代码高亮、封面图，自动部署到 GitHub Pages。</p>
+<p><strong>在线访问：</strong> <a href="https://inzeroworld.com.cn/TechBlog/">https://inzeroworld.com.cn/TechBlog/</a></p>
+<hr>
+<h2>目录</h2>
+<ol>
+<li><a href="#1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B">快速开始</a></li>
+<li><a href="#2-%E5%86%99%E5%8D%9A%E5%AE%A2%E6%96%87%E7%AB%A0">写博客文章</a></li>
+<li><a href="#3-%E6%96%87%E7%AB%A0%E5%85%83%E6%95%B0%E6%8D%AE%E8%AF%B4%E6%98%8E">文章元数据说明</a></li>
+<li><a href="#4-markdown-%E8%AF%AD%E6%B3%95">Markdown 语法</a></li>
+<li><a href="#5-latex-%E5%85%AC%E5%BC%8F">LaTeX 公式</a></li>
+<li><a href="#6-%E5%B0%81%E9%9D%A2%E5%9B%BE%E8%AE%BE%E7%BD%AE">封面图设置</a></li>
+<li><a href="#7-%E6%9B%B4%E6%8D%A2%E8%83%8C%E6%99%AF%E5%9B%BE">更换背景图</a></li>
+<li><a href="#8-%E6%96%B0%E5%BB%BA%E8%87%AA%E5%AE%9A%E4%B9%89%E9%A1%B5%E9%9D%A2">新建自定义页面</a></li>
+<li><a href="#9-%E5%8D%9A%E5%AE%A2%E4%B8%AA%E6%80%A7%E5%8C%96%E9%85%8D%E7%BD%AE">博客个性化配置</a></li>
+<li><a href="#10-%E9%83%A8%E7%BD%B2%E5%88%B0-github-pages">部署到 GitHub Pages</a></li>
+<li><a href="#11-%E6%97%A5%E5%B8%B8%E6%9B%B4%E6%96%B0%E6%B5%81%E7%A8%8B">日常更新流程</a></li>
+<li><a href="#12-%E9%A1%B9%E7%9B%AE%E7%BB%93%E6%9E%84">项目结构</a></li>
+</ol>
+<hr>
+<h2>1. 快速开始</h2>
+<h3>环境要求</h3>
+<ul>
+<li>Node.js 18.x 或以上</li>
+<li>Git</li>
+</ul>
+<h3>安装与运行</h3>
+<pre><code class="language-bash"># 克隆仓库
+git clone https://github.com/KiCola/TechBlog.git
+cd TechBlog
+
+# 安装依赖
+npm install
+
+# 启动本地开发服务器
+npm run dev
+</code></pre>
+<p>打开浏览器访问 <a href="http://localhost:3000">http://localhost:3000</a></p>
+<hr>
+<h2>2. 写博客文章</h2>
+<p>所有文章存放在 <code>posts/</code> 目录下，每篇文章是一个 <code>.md</code> 文件。</p>
+<h3>创建新文章</h3>
+<p>在 <code>posts/</code> 目录下新建一个 Markdown 文件，文件名即为文章的 URL：</p>
+<pre><code>posts/
+├── my-first-post.md        → /posts/my-first-post
+├── react-hooks-guide.md    → /posts/react-hooks-guide
+└── algorithm-dp.md         → /posts/algorithm-dp
+</code></pre>
+<p><strong>文件名规范：</strong></p>
+<ul>
+<li>使用英文和连字符（<code>-</code>）</li>
+<li>全部小写</li>
+<li>不要有空格或中文</li>
+<li>例如：<code>deep-learning-intro.md</code>、<code>cpp-pointer-notes.md</code></li>
+</ul>
+<h3>文章模板</h3>
+<pre><code class="language-markdown">---
+title: 文章标题
+date: 2026-03-17
+category: 分类名称
+tags: [标签1, 标签2, 标签3]
+cover: https://图片URL（可选）
+---
+
+## 第一个章节
+
+正文内容从这里开始...
+</code></pre>
+<hr>
+<h2>3. 文章元数据说明</h2>
+<p>每篇文章开头的 <code>---</code> 包裹部分叫做 <strong>frontmatter</strong>，用于设置文章属性：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>是否必填</th>
+<th>类型</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>title</code></td>
+<td>✅ 必填</td>
+<td>字符串</td>
+<td>文章标题</td>
+<td><code>title: 我学会了 React</code></td>
+</tr>
+<tr>
+<td><code>date</code></td>
+<td>✅ 必填</td>
+<td>日期</td>
+<td>发布日期，格式 YYYY-MM-DD</td>
+<td><code>date: 2026-03-17</code></td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>可选</td>
+<td>字符串</td>
+<td>文章分类（只能填一个）</td>
+<td><code>category: 前端开发</code></td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>可选</td>
+<td>数组</td>
+<td>文章标签（可多个）</td>
+<td><code>tags: [React, Hook, JavaScript]</code></td>
+</tr>
+<tr>
+<td><code>cover</code></td>
+<td>可选</td>
+<td>URL</td>
+<td>封面图片地址</td>
+<td><code>cover: https://...</code></td>
+</tr>
+</tbody></table>
+<h3>分类（category）</h3>
+<p>分类用于首页的筛选按钮，同一篇文章只能属于一个分类：</p>
+<pre><code class="language-yaml">category: 前端开发
+</code></pre>
+<p>常用分类参考：<code>前端开发</code>、<code>后端开发</code>、<code>算法</code>、<code>机器学习</code>、<code>工具使用</code>、<code>读书笔记</code>、<code>随笔</code></p>
+<h3>标签（tags）</h3>
+<p>标签显示在文章卡片和详情页底部，一篇文章可以有多个标签：</p>
+<pre><code class="language-yaml"># 单个标签
+tags: [JavaScript]
+
+# 多个标签
+tags: [React, TypeScript, 前端工程化]
+
+# 也可以这样写
+tags:
+  - React
+  - TypeScript
+  - Hooks
+</code></pre>
+<hr>
+<h2>4. Markdown 语法</h2>
+<h3>标题</h3>
+<pre><code class="language-markdown"># 一级标题
+## 二级标题
+### 三级标题
+#### 四级标题
+</code></pre>
+<h3>文字格式</h3>
+<pre><code class="language-markdown">**加粗文字**
+*斜体文字*
+~~删除线~~
+`行内代码`
+</code></pre>
+<h3>链接与图片</h3>
+<pre><code class="language-markdown">[链接文字](https://example.com)
+
+![图片描述](图片URL)
+![本地图片](/photo.jpg)
+</code></pre>
+<h3>列表</h3>
+<pre><code class="language-markdown">- 无序列表项 1
+- 无序列表项 2
+  - 嵌套列表项
+
+1. 有序列表项 1
+2. 有序列表项 2
+</code></pre>
+<h3>引用</h3>
+<pre><code class="language-markdown">&gt; 这是一段引用文字
+&gt; 可以多行
+</code></pre>
+<h3>代码块（支持语法高亮）</h3>
+<pre><code class="language-markdown">```javascript
+function hello(name) {
+  console.log(`Hello, ${name}!`);
+}
+```
+
+```python
+def hello(name):
+    print(f&quot;Hello, {name}!&quot;)
+```
+
+```bash
+npm install react
+```
+</code></pre>
+<p>支持的语言：<code>javascript</code>、<code>typescript</code>、<code>python</code>、<code>java</code>、<code>cpp</code>、<code>rust</code>、<code>go</code>、<code>bash</code>、<code>sql</code>、<code>html</code>、<code>css</code> 等</p>
+<h3>表格</h3>
+<pre><code class="language-markdown">| 列1 | 列2 | 列3 |
+|-----|-----|-----|
+| 数据1 | 数据2 | 数据3 |
+| 数据4 | 数据5 | 数据6 |
+</code></pre>
+<h3>分割线</h3>
+<pre><code class="language-markdown">---
+</code></pre>
+<hr>
+<h2>5. LaTeX 公式</h2>
+<p>博客内置 KaTeX 支持，可以直接在 Markdown 中写数学公式。</p>
+<h3>行内公式</h3>
+<p>用单个 <code>$</code> 包裹，显示在文字中间：</p>
+<pre><code class="language-markdown">质能方程 $E = mc^2$ 是物理学基础。
+
+二次方程求根公式：$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$
+</code></pre>
+<h3>块级公式</h3>
+<p>用 <code>$$</code> 包裹，单独成行居中显示：</p>
+<pre><code class="language-markdown">$$
+\int_{-\infty}^{+\infty} e^{-x^2} dx = \sqrt{\pi}
+$$
+
+$$
+\sum_{i=1}^{n} i = \frac{n(n+1)}{2}
+$$
+</code></pre>
+<h3>常用 LaTeX 符号速查</h3>
+<table>
+<thead>
+<tr>
+<th>效果</th>
+<th>代码</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>分数</td>
+<td><code>\frac{a}{b}</code></td>
+</tr>
+<tr>
+<td>根号</td>
+<td><code>\sqrt{x}</code> 、<code>\sqrt[n]{x}</code></td>
+</tr>
+<tr>
+<td>求和</td>
+<td><code>\sum_{i=1}^{n}</code></td>
+</tr>
+<tr>
+<td>积分</td>
+<td><code>\int_{a}^{b}</code></td>
+</tr>
+<tr>
+<td>极限</td>
+<td><code>\lim_{x \to 0}</code></td>
+</tr>
+<tr>
+<td>偏导</td>
+<td><code>\partial</code></td>
+</tr>
+<tr>
+<td>无穷</td>
+<td><code>\infty</code></td>
+</tr>
+<tr>
+<td>希腊字母</td>
+<td><code>\alpha</code>、<code>\beta</code>、<code>\gamma</code>、<code>\theta</code>、<code>\lambda</code>、<code>\mu</code>、<code>\sigma</code></td>
+</tr>
+<tr>
+<td>向量</td>
+<td><code>\mathbf{v}</code> 或 <code>\vec{v}</code></td>
+</tr>
+<tr>
+<td>矩阵</td>
+<td><code>\begin{pmatrix} a &amp; b \\ c &amp; d \end{pmatrix}</code></td>
+</tr>
+<tr>
+<td>约等于</td>
+<td><code>\approx</code></td>
+</tr>
+<tr>
+<td>不等于</td>
+<td><code>\neq</code></td>
+</tr>
+<tr>
+<td>箭头</td>
+<td><code>\rightarrow</code>、<code>\leftarrow</code>、<code>\Rightarrow</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>6. 封面图设置</h2>
+<p>在文章 frontmatter 中添加 <code>cover</code> 字段：</p>
+<pre><code class="language-yaml">---
+title: 我的文章
+date: 2026-03-17
+cover: https://images.unsplash.com/photo-xxx?w=800&amp;q=80
+---
+</code></pre>
+<h3>使用网络图片（推荐）</h3>
+<p>从以下免费图库获取图片链接：</p>
+<ul>
+<li><a href="https://unsplash.com">Unsplash</a> - 高质量免费图片，右键图片 → 复制图片地址</li>
+<li><a href="https://pexels.com">Pexels</a> - 免费商用图片</li>
+</ul>
+<p>Unsplash 图片链接可以加参数控制尺寸：</p>
+<pre><code>https://images.unsplash.com/photo-xxx?w=800&amp;q=80
+                                       ↑宽度  ↑质量(0-100)
+</code></pre>
+<h3>使用本地图片</h3>
+<ol>
+<li>将图片放入 <code>public/images/</code> 目录</li>
+<li>在 frontmatter 中引用：</li>
+</ol>
+<pre><code class="language-yaml">cover: /images/my-cover.jpg
+</code></pre>
+<p><strong>注意</strong>：部署到 GitHub Pages 后，本地图片路径需要加 <code>/TechBlog</code> 前缀：</p>
+<pre><code class="language-yaml">cover: /TechBlog/images/my-cover.jpg
+</code></pre>
+<h3>不设置封面</h3>
+<p>不填写 <code>cover</code> 字段时，系统会根据文章分类自动生成渐变色占位封面。</p>
+<hr>
+<h2>7. 更换背景图</h2>
+<p>背景图在 <code>app/layout.js</code> 中配置，本地和线上路径自动区分。</p>
+<h3>使用本地图片</h3>
+<ol>
+<li>将背景图片放入 <code>public/</code> 目录，例如 <code>public/bg.jpg</code></li>
+<li>打开 <code>app/layout.js</code>，找到第 6-10 行，修改文件名：</li>
+</ol>
+<pre><code class="language-javascript">const bgStyle = `
+  body {
+    background-image:
+      linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.82)),
+      url(&#39;${basePath}/bg.jpg&#39;);   // ← 修改这里的文件名
+  }
+`;
+</code></pre>
+<h3>使用网络图片</h3>
+<p>直接填写完整 URL，不需要 <code>basePath</code>：</p>
+<pre><code class="language-javascript">const bgStyle = `
+  body {
+    background-image:
+      linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.82)),
+      url(&#39;https://images.unsplash.com/photo-xxx?w=1920&amp;q=80&#39;);
+  }
+`;
+</code></pre>
+<h3>调整遮罩透明度</h3>
+<p><code>rgba(13, 17, 23, 0.82)</code> 中最后的数字控制遮罩深度：</p>
+<ul>
+<li><code>0.6</code> → 图片较亮，文字可能不清晰</li>
+<li><code>0.82</code> → 默认，图片较暗，文字清晰</li>
+<li><code>0.92</code> → 图片很暗，接近纯色背景</li>
+</ul>
+<hr>
+<h2>8. 新建自定义页面</h2>
+<h3>新建普通页面</h3>
+<p>在 <code>app/</code> 目录下新建文件夹和 <code>page.js</code>，路径即为 URL：</p>
+<pre><code>app/about/page.js   →   /about
+app/projects/page.js →  /projects
+</code></pre>
+<p><strong>示例：新建「关于我」页面</strong></p>
+<p>创建 <code>app/about/page.js</code>：</p>
+<pre><code class="language-jsx">import &#39;../styles/post.css&#39;;
+
+export const metadata = {
+  title: &#39;关于我&#39;,
+};
+
+export default function AboutPage() {
+  return (
+    &lt;div className=&quot;post-detail&quot;&gt;
+      &lt;article className=&quot;post-article&quot;&gt;
+        &lt;header className=&quot;post-header&quot;&gt;
+          &lt;h1 className=&quot;post-title&quot;&gt;关于我&lt;/h1&gt;
+        &lt;/header&gt;
+        &lt;div className=&quot;post-content&quot;&gt;
+          &lt;p&gt;这里写你的自我介绍...&lt;/p&gt;
+          &lt;p&gt;研究方向：xxx&lt;/p&gt;
+          &lt;p&gt;联系方式：your@email.com&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/article&gt;
+    &lt;/div&gt;
+  );
+}
+</code></pre>
+<h3>在导航栏添加链接</h3>
+<p>编辑 <code>components/Navbar.js</code>，在 <code>navbar-links</code> 中添加：</p>
+<pre><code class="language-jsx">&lt;div className=&quot;navbar-links&quot;&gt;
+  &lt;Link href=&quot;/&quot;&gt;首页&lt;/Link&gt;
+  &lt;Link href=&quot;/about&quot;&gt;关于我&lt;/Link&gt;        {/* 新增 */}
+  &lt;Link href=&quot;/projects&quot;&gt;项目&lt;/Link&gt;      {/* 新增 */}
+  &lt;a href=&quot;https://github.com/KiCola&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot; className=&quot;btn-github&quot;&gt;
+    ⭐ GitHub
+  &lt;/a&gt;
+&lt;/div&gt;
+</code></pre>
+<hr>
+<h2>9. 博客个性化配置</h2>
+<h3>修改博客标题和描述</h3>
+<p>编辑 <code>app/layout.js</code>：</p>
+<pre><code class="language-javascript">export const metadata = {
+  title: {
+    default: &#39;你的博客名称&#39;,        // ← 修改
+    template: &#39;%s | 你的博客名称&#39;,  // ← 修改
+  },
+  description: &#39;你的博客描述&#39;,      // ← 修改
+};
+</code></pre>
+<h3>修改导航栏 Logo</h3>
+<p>编辑 <code>components/Navbar.js</code>：</p>
+<pre><code class="language-jsx">&lt;span className=&quot;brand-name&quot;&gt;TechBlog&lt;/span&gt;  {/* ← 改为你的名字 */}
+</code></pre>
+<h3>修改 GitHub 链接</h3>
+<p>编辑 <code>components/Navbar.js</code>：</p>
+<pre><code class="language-jsx">&lt;a href=&quot;https://github.com/你的用户名&quot; ...&gt;
+</code></pre>
+<h3>修改主题颜色</h3>
+<p>编辑 <code>styles/globals.css</code> 中的 CSS 变量：</p>
+<pre><code class="language-css">:root {
+  --accent: #58a6ff;        /* 主强调色（链接、按钮、标签）*/
+  --accent-green: #3fb950;  /* 标签悬停色 */
+  --accent-warm: #f78166;   /* 警告/删除色 */
+  --bg-primary: #0d1117;    /* 主背景色 */
+  --bg-card: #1c2128;       /* 卡片背景色 */
+  --text-primary: #e6edf3;  /* 主文字色 */
+  --text-secondary: #8b949e;/* 次要文字色 */
+}
+</code></pre>
+<h3>修改页脚文字</h3>
+<p>编辑 <code>app/layout.js</code>：</p>
+<pre><code class="language-jsx">&lt;p&gt;© {new Date().getFullYear()} 你的名字 · 你的口号&lt;/p&gt;
+</code></pre>
+<hr>
+<h2>10. 部署到 GitHub Pages</h2>
+<h3>自动部署（每次 push 自动触发）</h3>
+<p>项目已配置 GitHub Actions，每次推送到 <code>main</code> 分支自动部署。</p>
+<p><strong>首次配置：</strong></p>
+<ol>
+<li>进入 GitHub 仓库 → <strong>Settings</strong> → <strong>Actions</strong> → <strong>General</strong></li>
+<li><strong>Workflow permissions</strong> 选择 <code>Read and write permissions</code> → <strong>Save</strong></li>
+<li>进入 <strong>Settings</strong> → <strong>Pages</strong></li>
+<li>Source 设为 <code>gh-pages</code> 分支，<code>/ (root)</code> → <strong>Save</strong></li>
+</ol>
+<p><strong>之后每次更新只需：</strong></p>
+<pre><code class="language-bash">git add .
+git commit -m &quot;更新说明&quot;
+git push
+</code></pre>
+<p>2-5 分钟后访问 <a href="https://inzeroworld.com.cn/TechBlog/">https://inzeroworld.com.cn/TechBlog/</a> 查看更新。</p>
+<hr>
+<h2>11. 日常更新流程</h2>
+<pre><code>① 在 posts/ 目录新建或编辑 .md 文件
+        ↓
+② npm run dev  →  http://localhost:3000 预览（可选）
+        ↓
+③ git add .
+   git commit -m &quot;新增文章：xxx&quot;
+   git push
+        ↓
+④ GitHub Actions 自动构建（2-5 分钟）
+        ↓
+⑤ 访问 https://inzeroworld.com.cn/TechBlog/ 查看 ✅
+</code></pre>
+<h3>常用 Git 命令</h3>
+<pre><code class="language-bash">git status              # 查看改动状态
+git add .               # 添加所有改动
+git add posts/xxx.md    # 只添加指定文件
+git commit -m &quot;说明&quot;    # 提交
+git push                # 推送
+git log --oneline       # 查看提交历史
+</code></pre>
+<hr>
+<h2>12. 项目结构</h2>
+<pre><code>TechBlog/
+├── app/                        # Next.js 应用
+│   ├── layout.js              # 全局布局（修改标题、背景图在这里）
+│   ├── page.js                # 首页入口
+│   └── posts/[slug]/page.js   # 文章详情页
+├── components/
+│   ├── Navbar.js              # 导航栏（修改链接、Logo 在这里）
+│   └── HomeClient.js          # 首页客户端组件
+├── lib/
+│   └── posts.js               # 文章读取、Markdown + LaTeX 渲染
+├── posts/                     # 📝 所有博客文章（在这里写文章）
+│   ├── welcome.md
+│   └── your-post.md
+├── public/                    # 静态资源
+│   └── bg.jpg                 # 背景图片
+├── styles/
+│   ├── globals.css            # 全局样式和 CSS 变量
+│   ├── home.css               # 首页样式
+│   ├── post.css               # 文章详情页样式
+│   └── navbar.css             # 导航栏样式
+├── .github/workflows/
+│   └── deploy.yml             # GitHub Actions 自动部署配置
+├── next.config.js             # Next.js 配置（basePath 等）
+└── package.json
+</code></pre>
+<hr>
+<h2>常见问题</h2>
+<p><strong>Q: 文章不显示？</strong>
+A: 检查文件名是否为英文、frontmatter 格式是否正确（特别是 <code>date</code> 字段格式）。</p>
+<p><strong>Q: LaTeX 公式显示不正常？</strong>
+A: 确保公式内的 <code>_</code> 和 <code>^</code> 没有被 Markdown 解析，可以用 <code>\</code> 转义特殊字符。</p>
+<p><strong>Q: 本地正常但线上样式乱了？</strong>
+A: 检查 <code>next.config.js</code> 中的 <code>basePath</code> 是否为 <code>/TechBlog</code>。</p>
+<p><strong>Q: 推送后多久能看到更新？</strong>
+A: 通常 2-5 分钟，可在仓库 Actions 标签查看进度。</p>
+<p><strong>Q: 如何删除文章？</strong>
+A: 删除 <code>posts/</code> 目录下对应的 <code>.md</code> 文件，然后 push。</p>
+<hr>
+<p><em>Built with <a href="https://nextjs.org">Next.js</a> · Deployed on <a href="https://pages.github.com">GitHub Pages</a></em></p>
+5:["slug","README","d"]
+0:["850Bi28titfQOUU_LyGkm",[[["",{"children":["posts",{"children":[["slug","README","d"],{"children":["__PAGE__?{\"slug\":\"README\"}",{}]}]}]},"$undefined","$undefined",true],["",{"children":["posts",{"children":[["slug","README","d"],{"children":["__PAGE__",{},[["$L1",["$","div",null,{"className":"post-detail","children":[["$","div",null,{"className":"post-nav","children":["$","$L2",null,{"href":"/","className":"back-link","children":"← 返回首页"}]}],["$","article",null,{"className":"post-article","children":[null,["$","header",null,{"className":"post-header","children":[["$","div",null,{"className":"post-meta","children":[["$","span",null,{"className":"post-category","children":"随笔"}],["$","span",null,{"className":"post-date","children":"2026年3月17日"}]]}],["$","h1",null,{"className":"post-title","children":"README"}],["$","div",null,{"className":"post-tags","children":[["$","span","博客",{"className":"tag","children":["#","博客"]}],["$","span","介绍",{"className":"tag","children":["#","介绍"]}]]}]]}],["$","div",null,{"className":"post-content","dangerouslySetInnerHTML":{"__html":"$3"}}]]}]]}],[["$","link","0",{"rel":"stylesheet","href":"/TechBlog/_next/static/css/d92a9d23552d4657.css","precedence":"next","crossOrigin":"$undefined"}]]],null],null]},[null,["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children","posts","children","$5","children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","notFoundStyles":"$undefined"}]],null]},[null,["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children","posts","children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","notFoundStyles":"$undefined"}]],null]},[[[["$","link","0",{"rel":"stylesheet","href":"/TechBlog/_next/static/css/2082a28c3ae0ae3e.css","precedence":"next","crossOrigin":"$undefined"}]],["$","html",null,{"lang":"zh-CN","children":[["$","head",null,{"children":[["$","link",null,{"rel":"preconnect","href":"https://fonts.googleapis.com"}],["$","link",null,{"rel":"preconnect","href":"https://fonts.gstatic.com","crossOrigin":"anonymous"}],["$","link",null,{"href":"https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap","rel":"stylesheet"}],["$","style",null,{"dangerouslySetInnerHTML":{"__html":"\n    body {\n      background-image:\n        linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.2)),\n        url('/TechBlog/wallhaven-e8996r.jpg');\n    }\n  "}}]]}],["$","body",null,{"children":["$","div",null,{"className":"app","children":[["$","$L7",null,{}],["$","main",null,{"className":"main-content","children":["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":"404"}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],"notFoundStyles":[]}]}],["$","footer",null,{"className":"footer","children":["$","p",null,{"children":["© ",2026," 我的技术博客 · 用代码记录思考"]}]}]]}]}]]}]],null],null],["$L8",null]]]]
+8:[["$","meta","0",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","1",{"charSet":"utf-8"}],["$","title","2",{"children":"README | 技术博客"}],["$","meta","3",{"name":"description","content":"TechBlog - 个人技术博客\n\n基于 Next.js 14 构建的静态技术博客，支持 Markdown 写作、LaTeX 公式、代码高亮、封面图，自动部署到 GitHub Pages。\n\n在线访问： https://inzeroworld.com.cn/TechBlog/\n\n---\n\n 目录\n\n1. 快速开始(1-快速开始)\n2. 写博客文章(2-写博客文章)\n3. 文章元数据说明(3-"}],["$","meta","4",{"property":"og:title","content":"README | 技术博客"}],["$","meta","5",{"property":"og:description","content":"TechBlog - 个人技术博客\n\n基于 Next.js 14 构建的静态技术博客，支持 Markdown 写作、LaTeX 公式、代码高亮、封面图，自动部署到 GitHub Pages。\n\n在线访问： https://inzeroworld.com.cn/TechBlog/\n\n---\n\n 目录\n\n1. 快速开始(1-快速开始)\n2. 写博客文章(2-写博客文章)\n3. 文章元数据说明(3-"}],["$","meta","6",{"name":"twitter:card","content":"summary"}],["$","meta","7",{"name":"twitter:title","content":"README | 技术博客"}],["$","meta","8",{"name":"twitter:description","content":"TechBlog - 个人技术博客\n\n基于 Next.js 14 构建的静态技术博客，支持 Markdown 写作、LaTeX 公式、代码高亮、封面图，自动部署到 GitHub Pages。\n\n在线访问： https://inzeroworld.com.cn/TechBlog/\n\n---\n\n 目录\n\n1. 快速开始(1-快速开始)\n2. 写博客文章(2-写博客文章)\n3. 文章元数据说明(3-"}]]
+1:null

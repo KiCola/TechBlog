@@ -1,0 +1,105 @@
+2:I[2972,["972","static/chunks/972-0f0cbd81402c346b.js","333","static/chunks/app/posts/%5Bslug%5D/page-385e7c90f9aeb3f8.js"],""]
+4:I[4707,[],""]
+6:I[6423,[],""]
+7:I[2516,["972","static/chunks/972-0f0cbd81402c346b.js","185","static/chunks/app/layout-02a0f3db349a0c34.js"],"default"]
+3:Tc09,<h2>什么是静态博客？</h2>
+<p>静态博客是指在构建时就生成所有 HTML 文件，无需服务器动态处理请求。这种方式有以下优势：</p>
+<ul>
+<li>🚀 <strong>超快速度</strong>：直接加载 HTML，无需数据库查询</li>
+<li>🔒 <strong>更安全</strong>：没有后端服务器，减少攻击面</li>
+<li>💰 <strong>免费托管</strong>：GitHub Pages 完全免费</li>
+<li>📱 <strong>SEO 友好</strong>：所有内容都是静态 HTML，搜索引擎易于索引</li>
+</ul>
+<h2>为什么选择 Next.js？</h2>
+<p>Next.js 提供了完美的静态生成能力：</p>
+<pre><code class="language-javascript">// next.config.js
+const nextConfig = {
+  output: &#39;export&#39;,  // 启用静态导出
+  images: {
+    unoptimized: true,  // 不优化图片
+  },
+};
+</code></pre>
+<h2>项目架构</h2>
+<pre><code>posts/
+├── welcome.md
+├── my-first-post.md
+└── another-article.md
+
+app/
+├── layout.js          # 全局布局
+├── page.js            # 首页（列表）
+└── posts/[slug]/page.js  # 文章详情页
+
+lib/
+└── posts.js           # 读取和解析 Markdown
+</code></pre>
+<h2>核心功能实现</h2>
+<h3>1. 读取 Markdown 文件</h3>
+<pre><code class="language-javascript">// lib/posts.js
+import fs from &#39;fs&#39;;
+import matter from &#39;gray-matter&#39;;
+
+export function getAllPosts() {
+  const files = fs.readdirSync(&#39;posts&#39;);
+  return files.map(file =&gt; {
+    const content = fs.readFileSync(`posts/${file}`, &#39;utf8&#39;);
+    const { data, content: body } = matter(content);
+    return { ...data, content: body };
+  });
+}
+</code></pre>
+<h3>2. 生成静态路由</h3>
+<pre><code class="language-javascript">// app/posts/[slug]/page.js
+export async function generateStaticParams() {
+  const posts = getAllPosts();
+  return posts.map(post =&gt; ({
+    slug: post.slug,
+  }));
+}
+</code></pre>
+<h3>3. 渲染 Markdown</h3>
+<pre><code class="language-javascript">import { marked } from &#39;marked&#39;;
+
+const html = marked(markdownContent);
+</code></pre>
+<h2>部署流程</h2>
+<h3>GitHub Actions 自动化</h3>
+<p>每次 push 到 main 分支时：</p>
+<ol>
+<li>安装依赖</li>
+<li>运行 <code>npm run build</code></li>
+<li>生成 <code>out/</code> 目录</li>
+<li>部署到 <code>gh-pages</code> 分支</li>
+<li>GitHub Pages 自动发布</li>
+</ol>
+<pre><code class="language-yaml"># .github/workflows/deploy.yml
+- name: Build
+  run: npm run build
+
+- name: Deploy
+  uses: peaceiris/actions-gh-pages@v3
+  with:
+    publish_dir: ./out
+</code></pre>
+<h2>性能优化</h2>
+<ul>
+<li>✅ 静态 HTML - 无需服务器计算</li>
+<li>✅ CSS 内联 - 减少 HTTP 请求</li>
+<li>✅ 图片优化 - 使用现代格式</li>
+<li>✅ 代码分割 - 按需加载</li>
+</ul>
+<h2>总结</h2>
+<p>这个博客系统提供了：</p>
+<ul>
+<li>📝 简单的 Markdown 写作体验</li>
+<li>🎨 现代化的暗黑主题 UI</li>
+<li>🚀 一键部署到 GitHub Pages</li>
+<li>📊 完整的分类和标签系统</li>
+<li>🔍 SEO 友好的静态生成</li>
+</ul>
+<p>开始写作吧！</p>
+5:["slug","nextjs-static-blog","d"]
+0:["850Bi28titfQOUU_LyGkm",[[["",{"children":["posts",{"children":[["slug","nextjs-static-blog","d"],{"children":["__PAGE__?{\"slug\":\"nextjs-static-blog\"}",{}]}]}]},"$undefined","$undefined",true],["",{"children":["posts",{"children":[["slug","nextjs-static-blog","d"],{"children":["__PAGE__",{},[["$L1",["$","div",null,{"className":"post-detail","children":[["$","div",null,{"className":"post-nav","children":["$","$L2",null,{"href":"/","className":"back-link","children":"← 返回首页"}]}],["$","article",null,{"className":"post-article","children":[null,["$","header",null,{"className":"post-header","children":[["$","div",null,{"className":"post-meta","children":[["$","span",null,{"className":"post-category","children":"技术教程"}],["$","span",null,{"className":"post-date","children":"2026年3月17日"}]]}],["$","h1",null,{"className":"post-title","children":"Next.js 静态博客搭建指南"}],["$","div",null,{"className":"post-tags","children":[["$","span","Next.js",{"className":"tag","children":["#","Next.js"]}],["$","span","博客",{"className":"tag","children":["#","博客"]}],["$","span","GitHub Pages",{"className":"tag","children":["#","GitHub Pages"]}]]}]]}],["$","div",null,{"className":"post-content","dangerouslySetInnerHTML":{"__html":"$3"}}]]}]]}],[["$","link","0",{"rel":"stylesheet","href":"/TechBlog/_next/static/css/d92a9d23552d4657.css","precedence":"next","crossOrigin":"$undefined"}]]],null],null]},[null,["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children","posts","children","$5","children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","notFoundStyles":"$undefined"}]],null]},[null,["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children","posts","children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","notFoundStyles":"$undefined"}]],null]},[[[["$","link","0",{"rel":"stylesheet","href":"/TechBlog/_next/static/css/2082a28c3ae0ae3e.css","precedence":"next","crossOrigin":"$undefined"}]],["$","html",null,{"lang":"zh-CN","children":[["$","head",null,{"children":[["$","link",null,{"rel":"preconnect","href":"https://fonts.googleapis.com"}],["$","link",null,{"rel":"preconnect","href":"https://fonts.gstatic.com","crossOrigin":"anonymous"}],["$","link",null,{"href":"https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap","rel":"stylesheet"}],["$","style",null,{"dangerouslySetInnerHTML":{"__html":"\n    body {\n      background-image:\n        linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.2)),\n        url('/TechBlog/wallhaven-e8996r.jpg');\n    }\n  "}}]]}],["$","body",null,{"children":["$","div",null,{"className":"app","children":[["$","$L7",null,{}],["$","main",null,{"className":"main-content","children":["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":"404"}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],"notFoundStyles":[]}]}],["$","footer",null,{"className":"footer","children":["$","p",null,{"children":["© ",2026," 我的技术博客 · 用代码记录思考"]}]}]]}]}]]}]],null],null],["$L8",null]]]]
+8:[["$","meta","0",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","1",{"charSet":"utf-8"}],["$","title","2",{"children":"Next.js 静态博客搭建指南 | 技术博客"}],["$","meta","3",{"name":"description","content":"什么是静态博客？\n\n静态博客是指在构建时就生成所有 HTML 文件，无需服务器动态处理请求。这种方式有以下优势：\n\n- 🚀 超快速度：直接加载 HTML，无需数据库查询\n- 🔒 更安全：没有后端服务器，减少攻击面\n- 💰 免费托管：GitHub Pages 完全免费\n- 📱 SEO 友好：所有内容都是静态 HTML，搜索引擎易于索引\n\n 为什么选择 Next.js？\n\nNext.js"}],["$","meta","4",{"property":"og:title","content":"Next.js 静态博客搭建指南 | 技术博客"}],["$","meta","5",{"property":"og:description","content":"什么是静态博客？\n\n静态博客是指在构建时就生成所有 HTML 文件，无需服务器动态处理请求。这种方式有以下优势：\n\n- 🚀 超快速度：直接加载 HTML，无需数据库查询\n- 🔒 更安全：没有后端服务器，减少攻击面\n- 💰 免费托管：GitHub Pages 完全免费\n- 📱 SEO 友好：所有内容都是静态 HTML，搜索引擎易于索引\n\n 为什么选择 Next.js？\n\nNext.js"}],["$","meta","6",{"name":"twitter:card","content":"summary"}],["$","meta","7",{"name":"twitter:title","content":"Next.js 静态博客搭建指南 | 技术博客"}],["$","meta","8",{"name":"twitter:description","content":"什么是静态博客？\n\n静态博客是指在构建时就生成所有 HTML 文件，无需服务器动态处理请求。这种方式有以下优势：\n\n- 🚀 超快速度：直接加载 HTML，无需数据库查询\n- 🔒 更安全：没有后端服务器，减少攻击面\n- 💰 免费托管：GitHub Pages 完全免费\n- 📱 SEO 友好：所有内容都是静态 HTML，搜索引擎易于索引\n\n 为什么选择 Next.js？\n\nNext.js"}]]
+1:null

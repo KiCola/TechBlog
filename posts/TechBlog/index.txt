@@ -1,0 +1,51 @@
+2:I[2972,["972","static/chunks/972-0f0cbd81402c346b.js","333","static/chunks/app/posts/%5Bslug%5D/page-385e7c90f9aeb3f8.js"],""]
+4:I[4707,[],""]
+6:I[6423,[],""]
+7:I[2516,["972","static/chunks/972-0f0cbd81402c346b.js","185","static/chunks/app/layout-02a0f3db349a0c34.js"],"default"]
+3:Td3c,<h1>技术路线：人形机器人运动控制</h1>
+<p>在这个具身智能的概念疯狂生长的年代，我写下这篇技术路线和一点自己的感想，既为自己的未来做规划，也为记录一些读研期间的思考。</p>
+<p>人形机器人作为近几年来实体行业炒得最热的概念，其本质究竟是一场技术革命，还是一次资本造势，并非本文讨论的重点。事实上，笔者也身处当局，既热忱于机器人事业，也迷茫于未来发展和选择。但殊涂同归，做一个领域就要尽力追求顶尖，谨以此文写下我的规划和想法，供自己与诸君参阅。</p>
+<h2>人形机器人领域概览</h2>
+<h3>参考文献</h3>
+<p> <a href="https://arxiv.org/abs/2501.02116">Gu 等 - 2025 - Humanoid Locomotion and Manipulation Current Progress and Challenges in Control, Planning, and Lear.pdf</a> </p>
+<h3>概述</h3>
+<p>人形机器人运动控制领域有诸多分类，并未达成完全的一致。就拿最常见的Locomotion和Manipulation举例，有的人认为仅仅控制Humanoid的下肢关节做移动才叫locomotion，也有人认为全身关节参与的移动也可以叫locomotion；同时，由于全关节参与到任务的执行中，所以不管是全关节的Locomotion还是Manipulation任务，都可以称之为全身运动控制WBC任务......</p>
+<p>在此，笔者为自己划定人形运控领域的分类：</p>
+<ol>
+<li>Locomotion——指让机器人移动、动作跟踪等，体现机器人平台移动能力的任务</li>
+<li>Manipulation——指让机器人伸展末端执行器（尤其是上肢）、实现精细操作等，体现机器人平台操作性能的任务</li>
+<li>Loco_Manipulation——二者结合的任务</li>
+</ol>
+<p>其中，狭义的人形机器人运动控制就落到了Locomotion任务上。按我的理解为人形机器人运动控制领域下定义，就是：通过各种技术手段，让人形机器人执行某种动作、按某种方式移动，从而实现平稳、鲁棒、通用的运动控制的研究领域。</p>
+<h3>方向细分</h3>
+<p>以笔者的理解，有以下方向细分：</p>
+<ul>
+<li>强化学习运动控制<ul>
+<li>指用纯RL设计奖励工程，创建仿真环境，不使用额外数据辅助，实现机器人运动控制</li>
+<li>Humanoid-gym、HugWBC等</li>
+</ul>
+</li>
+<li>Motion Tracking<ul>
+<li>指通过动捕（Mocap）数据集，用模仿学习，让机器人跟踪动作参考，习得动作专家模型，从而控制机器人执行各种运动。</li>
+<li>AMP、BeyondMimic等</li>
+</ul>
+</li>
+<li>视频动作生成<ul>
+<li>指通过视频生成参考动作，供机器人学习的类MotionTracking任务</li>
+</ul>
+</li>
+<li>遥操作<ul>
+<li>指利用VR、视觉相机等各种媒介，让机器人根据人类动作复现操作</li>
+</ul>
+</li>
+<li>VLA</li>
+<li>带感知的运动控制</li>
+<li>.etc</li>
+</ul>
+<p>这几个领域绝非互相独立，而是彼此嵌合的技术方向，甚至可以从上往下依次供入门者研究。</p>
+<h2>Post Thinkings</h2>
+<p>在写下这篇文章之前，我刚在线上参与了Lumina具身智能社区的论文研读，旁听了BIGAI的几位同龄人（上下不超过两岁吧）的Promising and Creative的论文工作，不免生发了很多思考，记录在文末吧。<img src="/image-20260318171310824.png" alt="image-20260318171310824"></p>
+5:["slug","TechBlog","d"]
+0:["850Bi28titfQOUU_LyGkm",[[["",{"children":["posts",{"children":[["slug","TechBlog","d"],{"children":["__PAGE__?{\"slug\":\"TechBlog\"}",{}]}]}]},"$undefined","$undefined",true],["",{"children":["posts",{"children":[["slug","TechBlog","d"],{"children":["__PAGE__",{},[["$L1",["$","div",null,{"className":"post-detail","children":[["$","div",null,{"className":"post-nav","children":["$","$L2",null,{"href":"/","className":"back-link","children":"← 返回首页"}]}],["$","article",null,{"className":"post-article","children":[["$","div",null,{"className":"post-cover","children":["$","img",null,{"src":"/TechBlog/wallhaven-vqd7z5.png","alt":"技术路线：人形机器人运动控制"}]}],["$","header",null,{"className":"post-header","children":[["$","div",null,{"className":"post-meta","children":[["$","span",null,{"className":"post-category","children":"Humanoid"}],["$","span",null,{"className":"post-date","children":"2026年3月17日"}]]}],["$","h1",null,{"className":"post-title","children":"技术路线：人形机器人运动控制"}],["$","div",null,{"className":"post-tags","children":[["$","span","技术路线",{"className":"tag","children":["#","技术路线"]}],["$","span","Humanoid",{"className":"tag","children":["#","Humanoid"]}],["$","span","强化学习",{"className":"tag","children":["#","强化学习"]}]]}]]}],["$","div",null,{"className":"post-content","dangerouslySetInnerHTML":{"__html":"$3"}}]]}]]}],[["$","link","0",{"rel":"stylesheet","href":"/TechBlog/_next/static/css/d92a9d23552d4657.css","precedence":"next","crossOrigin":"$undefined"}]]],null],null]},[null,["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children","posts","children","$5","children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","notFoundStyles":"$undefined"}]],null]},[null,["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children","posts","children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","notFoundStyles":"$undefined"}]],null]},[[[["$","link","0",{"rel":"stylesheet","href":"/TechBlog/_next/static/css/2082a28c3ae0ae3e.css","precedence":"next","crossOrigin":"$undefined"}]],["$","html",null,{"lang":"zh-CN","children":[["$","head",null,{"children":[["$","link",null,{"rel":"preconnect","href":"https://fonts.googleapis.com"}],["$","link",null,{"rel":"preconnect","href":"https://fonts.gstatic.com","crossOrigin":"anonymous"}],["$","link",null,{"href":"https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap","rel":"stylesheet"}],["$","style",null,{"dangerouslySetInnerHTML":{"__html":"\n    body {\n      background-image:\n        linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.2)),\n        url('/TechBlog/wallhaven-e8996r.jpg');\n    }\n  "}}]]}],["$","body",null,{"children":["$","div",null,{"className":"app","children":[["$","$L7",null,{}],["$","main",null,{"className":"main-content","children":["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":"404"}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],"notFoundStyles":[]}]}],["$","footer",null,{"className":"footer","children":["$","p",null,{"children":["© ",2026," 我的技术博客 · 用代码记录思考"]}]}]]}]}]]}]],null],null],["$L8",null]]]]
+8:[["$","meta","0",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","1",{"charSet":"utf-8"}],["$","title","2",{"children":"技术路线：人形机器人运动控制 | 技术博客"}],["$","meta","3",{"name":"description","content":"技术路线：人形机器人运动控制\n\n在这个具身智能的概念疯狂生长的年代，我写下这篇技术路线和一点自己的感想，既为自己的未来做规划，也为记录一些读研期间的思考。\n\n人形机器人作为近几年来实体行业炒得最热的概念，其本质究竟是一场技术革命，还是一次资本造势，并非本文讨论的重点。事实上，笔者也身处当局，既热忱于机器人事业，也迷茫于未来发展和选择。但殊涂同归，做一个领域就要尽力追求顶尖，谨以此文写下我的规划"}],["$","meta","4",{"property":"og:title","content":"技术路线：人形机器人运动控制 | 技术博客"}],["$","meta","5",{"property":"og:description","content":"技术路线：人形机器人运动控制\n\n在这个具身智能的概念疯狂生长的年代，我写下这篇技术路线和一点自己的感想，既为自己的未来做规划，也为记录一些读研期间的思考。\n\n人形机器人作为近几年来实体行业炒得最热的概念，其本质究竟是一场技术革命，还是一次资本造势，并非本文讨论的重点。事实上，笔者也身处当局，既热忱于机器人事业，也迷茫于未来发展和选择。但殊涂同归，做一个领域就要尽力追求顶尖，谨以此文写下我的规划"}],["$","meta","6",{"property":"og:image","content":"http://localhost:3000/TechBlog/wallhaven-vqd7z5.png"}],["$","meta","7",{"name":"twitter:card","content":"summary_large_image"}],["$","meta","8",{"name":"twitter:title","content":"技术路线：人形机器人运动控制 | 技术博客"}],["$","meta","9",{"name":"twitter:description","content":"技术路线：人形机器人运动控制\n\n在这个具身智能的概念疯狂生长的年代，我写下这篇技术路线和一点自己的感想，既为自己的未来做规划，也为记录一些读研期间的思考。\n\n人形机器人作为近几年来实体行业炒得最热的概念，其本质究竟是一场技术革命，还是一次资本造势，并非本文讨论的重点。事实上，笔者也身处当局，既热忱于机器人事业，也迷茫于未来发展和选择。但殊涂同归，做一个领域就要尽力追求顶尖，谨以此文写下我的规划"}],["$","meta","10",{"name":"twitter:image","content":"http://localhost:3000/TechBlog/wallhaven-vqd7z5.png"}]]
+1:null

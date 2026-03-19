@@ -1,0 +1,985 @@
+2:I[9379,["972","static/chunks/972-0f0cbd81402c346b.js","931","static/chunks/app/page-277df8f6c61f9449.js"],"default"]
+9:I[2516,["972","static/chunks/972-0f0cbd81402c346b.js","185","static/chunks/app/layout-02a0f3db349a0c34.js"],"default"]
+a:I[4707,[],""]
+b:I[6423,[],""]
+3:T53f3,<h1>从HUGWBC学通强化学习运动控制</h1>
+<h2>项目背景</h2>
+<p><img src="/image-20260319134135511.png" alt="image-20260319134135511"></p>
+<p>HUGWBC是上海交通大学和AI Lab团队联合发表在RSS2025上的一篇关于通用人形机器人全身运动控制器的文章</p>
+<p><a href="https://arxiv.org/abs/2502.03206">https://arxiv.org/abs/2502.03206</a></p>
+<p>HUGWBC目前代码已开源，项目链接如下</p>
+<p><a href="https://hugwbc.github.io/">https://hugwbc.github.io/</a></p>
+<p>该项目主要通过强化学习，训练H1机器人全身运动，通过特殊的command设计，将多种步态融合进控制接口，通过发布不同指令实现机器人多步态的切换；同时，基于强化学习中奖励函数的设计，HUGWBC将行走、站立、双脚跳跃融合进了一个Policy中，让H1的Locomotion更加General和Versatile</p>
+<p>作为笔者第一个人形机器人项目，同时也是笔者的毕业设计，我拟结合代码完整地梳理一下HUGWBC的设计思路和构造，并尝试将其迁移到G1等机器人上，查看训练效果，最终目标是完成在G1等机器人的框架迁移、Sim2Sim和Sim2Real</p>
+<p>接下来，让我们走进HUGWBC，去看看强化学习视角下，人形机器人的控制设计。</p>
+<h2>走进HUGWBC</h2>
+<h3>概览</h3>
+<p><img src="/image-20260319135020462.png" alt="image-20260319135020462"></p>
+<p>运动作为人形机器人的一项基本技能，如何突破单一策略控制下运动单一、不可扩展的挑战，是人形机器人运控的一大主题。简单来说，就是如何最简洁高效地赋予人形机器人通用性的运动能力。</p>
+<p>在技术路线那篇文章中，我们提到，现有的工作方向主要是两个方面：</p>
+<ol>
+<li>通过强化学习，设计奖励函数和目标，通过奖励和正则化来“推拉”机器人学习到不会让自己摔倒、同时又能响应指令运动的策略网络(<code>Unitree_rl_gym</code>、<code>Humanoid_gym</code>、<code>HugWBC</code>)</li>
+<li>通过大规模的数据集做模仿学习，让机器人从Motion Tracking开始，有监督地掌握各项运动性能，并发挥在LLM领域大放异彩的Scaling Law(规模效应)和扩散模型、流匹配模型还有蒸馏的方法，将多个运动策略蒸馏到一个统一的Policy下，从而让机器人在大规模学习中提升运动的通用性（<code>BeyondMimic</code>、<code>SONIC</code>、<code>OmniXtreme</code>）</li>
+</ol>
+<p>在过去的五年时间里，技术整体上呈现一个先1后2的发展方向，我认为这主要是源自早期强化学习尤其是PPO在实体机器人部署上的成功以及数据集的匮乏所演变的自然结果，并在越来越多的资源投向具身智能领域、尤其是VLA后，后者在未来的应用领域会更大。</p>
+<p>在这个背景下，HUGWBC在一定程度上为传统的纯强化学习做了技术上的集成和扩展，作为人形机器人运动控制技能树上的一个枝桠，具有很高的学习和参考价值。</p>
+<h3>框架</h3>
+<p><img src="HugWBC/image-20260319141018406.png" alt="image-20260319141018406"></p>
+<p>上图是HUGWBC论文中展示的整体框架。我们简易拆分一下这个框架：</p>
+<p>1）左侧，框架展示了HUGWBC对单体机器人的控制指令的组成，主要有两个部分：Task Command 和 Behavior Command。其中，Task Command主要负责给出H1运动的各类任务指标，主要是<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0361em;vertical-align:-0.2861em;"></span><span class="mopen">[</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.22222em;">V</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.2222em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">x</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.22222em;">V</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.2222em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">y</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.22222em;">V</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.2222em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">y</span><span class="mord mathnormal mtight">a</span><span class="mord mathnormal mtight" style="margin-right:0.02691em;">w</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mclose">]</span></span></span></span>这三部分，也即发出机器人运动的线速度和角速度指令；Behavior Command则主要负责给出H1运动时的各种表现指令，主要是<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord mathnormal">os</span><span class="mord mathnormal">t</span><span class="mord mathnormal">u</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal">e</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">G</span><span class="mord mathnormal">ai</span><span class="mord mathnormal">t</span><span class="mclose">]</span></span></span></span>三个部分，其中<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal">t</span></span></span></span>主要包括<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal" style="margin-right:0.13889em;">tP</span><span class="mord mathnormal">ha</span><span class="mord mathnormal">se</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal">t</span><span class="mord mathnormal" style="margin-right:0.02778em;">D</span><span class="mord mathnormal">u</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal">a</span><span class="mord mathnormal">t</span><span class="mord mathnormal">i</span><span class="mord mathnormal">o</span><span class="mord mathnormal">n</span><span class="mclose">]</span></span></span></span>两项，分别给出机器人两足的相位差和接触/悬空的占空比；<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord mathnormal">os</span><span class="mord mathnormal">t</span><span class="mord mathnormal">u</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal">e</span></span></span></span>部分主要包括<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.13889em;">W</span><span class="mord mathnormal">ai</span><span class="mord mathnormal">s</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="mord mathnormal">o</span><span class="mord mathnormal">d</span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mord mathnormal" style="margin-right:0.08125em;">H</span><span class="mord mathnormal">e</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal">h</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="mord mathnormal">o</span><span class="mord mathnormal">d</span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord mathnormal">i</span><span class="mord mathnormal">t</span><span class="mord mathnormal">c</span><span class="mord mathnormal">h</span><span class="mclose">]</span></span></span></span>，<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">G</span><span class="mord mathnormal">ai</span><span class="mord mathnormal">t</span></span></span></span>则主要包括<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal" style="margin-right:0.13889em;">tF</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal">e</span><span class="mord mathnormal" style="margin-right:0.03588em;">q</span><span class="mord mathnormal">u</span><span class="mord mathnormal">e</span><span class="mord mathnormal">n</span><span class="mord mathnormal">ce</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal" style="margin-right:0.05764em;">tS</span><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="mord mathnormal">in</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal" style="margin-right:0.08125em;">H</span><span class="mord mathnormal">e</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal">h</span><span class="mord mathnormal">t</span><span class="mclose">]</span></span></span></span>。其中Foot和Gait部分感觉可以合并到一起，统称为机器人的步态。</p>
+<p><img src="HugWBC/image-20260319143719704.png" alt="image-20260319143719704"></p>
+<p>2）右侧，框架展示了HUGWBC上肢的干预——如果有遥操作或者其他外部操作给到上肢，上肢则通过Intervention Indicator给到策略接管上肢操作。在仿真环境中，也可以演示噪声接管下机器人的运动状态。</p>
+<p><img src="HugWBC/image-20260319143737888.png" alt="image-20260319143737888"></p>
+<p>总体来说这个框架在人形机器人强化学习运控中是非常有效的：一方面，通过指令集的有机结合，控制器可以响应指令给出机器人不同姿态的控制信号，让机器人执行对应的步态和姿态；另一方面，通过噪声课程学习，HUGWBC比较好地实现了上下半身的解耦，从而在上半身作出大规模动作时，下半身依旧能维持自身稳定状态，甚至在不同的步态下运动、平衡。</p>
+<p><font color=purple>做一些发散性的思考：如果在hugwbc的基础上再给机器人做更高层的规划，比如视觉语言动作模型，给出机器人到达点位的指令，让机器人平稳抵达目标位置，实质上就完成了很多实践当中的任务。当然这还是属于分层规划的范畴。</font></p>
+<p><font color=red>但总的来说，HUGWBC为机器人提供了一个更加统一通用的底层控制器，为后续很多任务的执行铺路，这也是笔者认为人形运控这个领域研究的核心意义——构建一个统一通用的运动模组</font></p>
+<h3>技术细节</h3>
+<p>如何关注一个强化学习工作的技术细节？经过笔者一段时间的摸索，我认为人形机器人强化学习领域的很多技术可以按如下视角入手</p>
+<h4>1.仿真环境设计</h4>
+<p>在强化学习算法迭代至今，核心算法大致定型，对于工程上的问题，如何实现一个仿真环境来给机器人做“交互”，成为许多强化学习工作要做的第一步。</p>
+<p>在文章中作者并为过多提及仿真环境设计的内容——这主要是因为HUGWBC关注的是机器人在常态条件下的行动能力，而非像楼梯那样的非结构化地形、或者像规定落脚点那样的特定任务场景。</p>
+<p>作者采用Isaac Gym模拟器，沿用了Legged_gym的设计</p>
+<h4>2.人形机器人配置</h4>
+<h5>结构</h5>
+<p><img src="HugWBC/image-20260319150850360.png" alt="image-20260319150850360"></p>
+<p>上图为HUGWBC使用的H1机器人，如图所示，H1共有19个关节，其中上肢有8个关节，腰部有1个关节，腿部有10个关节</p>
+<p><img src="HugWBC/062631298315422287588c3ed9562663_6580x4482.png" alt="img"></p>
+<p><img src="HugWBC/image-20260319155049637.png" alt="image-20260319155049637"></p>
+<p>这是官网上的H1说明</p>
+<p>作为一个人形机器人平台，H1的设计无疑是优秀的：较为稳定的机身，尽可能精简的全身关节，使得我们的强化学习可以跑在更加稳定的实体上</p>
+<h5>参数配置</h5>
+<p>我们这里的参数主要针对机器人的仿真参数和物理限制，主要就是PD和torque_limit</p>
+<pre><code class="language-python">    class control( LeggedRobotCfg.control ):
+        # PD Drive parameters:
+        control_type = &#39;P&#39;
+          # PD Drive parameters:
+        stiffness = {&#39;hip_yaw&#39;: 200,
+                     &#39;hip_roll&#39;: 200,
+                     &#39;hip_pitch&#39;: 200,
+                     &#39;knee&#39;: 300,
+                     &#39;ankle&#39;: 40,
+                     &#39;torso&#39;: 300,
+                     &#39;shoulder_pitch&#39;: 20,
+                     &#39;shoulder_roll&#39;: 20,
+                     &#39;shoulder_yaw&#39;: 20,
+                     &quot;elbow&quot;: 20,
+                     }  # [N*m/rad]
+        damping = {  &#39;hip_yaw&#39;: 5,
+                     &#39;hip_roll&#39;: 5,
+                     &#39;hip_pitch&#39;: 5,
+                     &#39;knee&#39;: 6,
+                     &#39;ankle&#39;: 2,
+                     &#39;torso&#39;: 6,
+                     &#39;shoulder_pitch&#39;: 0.5,
+                     &#39;shoulder_roll&#39;: 0.5,
+                     &#39;shoulder_yaw&#39;: 0.5,
+                     &quot;elbow&quot;: 0.5,
+                     }  # [N*m/rad]  # [N*m*s/rad]
+        torque_limits = {
+                     &#39;hip_yaw&#39;: 180,
+                     &#39;hip_roll&#39;: 180,
+                     &#39;hip_pitch&#39;: 180,
+                     &#39;knee&#39;: 280,
+                     &#39;ankle&#39;: 38,
+                     &#39;torso&#39;: 180,
+                     &#39;shoulder_pitch&#39;: 35,
+                     &#39;shoulder_roll&#39;: 35,
+                     &#39;shoulder_yaw&#39;: 15,
+                     &quot;elbow&quot;: 35,
+                     }
+        # action scale: target angle = actionScale * action + defaultAngle
+        action_scale = 0.25
+        # decimation: Number of control action updates @ sim DT per policy DT
+        decimation = 4
+</code></pre>
+<p>下面主要借着HUGWBC来学学PD参数</p>
+<h6>PD</h6>
+<p><img src="HugWBC/v2-62c56b1eb4c053d58894740a8ce250a0_1440w.jpg" alt="img"></p>
+<p>在HUGWBC中，PD参数在经历初始化后，传入到力矩计算单元：</p>
+<pre><code class="language-python">def _compute_torques(self, actions):
+    &quot;&quot;&quot; Compute torques from actions.
+        Actions can be interpreted as position or velocity targets given to a PD controller, or directly as scaled torques.
+        [NOTE]: torques must have the same dimension as the number of DOFs, even if some DOFs are not actuated.
+
+    Args:
+        actions (torch.Tensor): Actions
+
+    Returns:
+        [torch.Tensor]: Torques sent to the simulation
+    &quot;&quot;&quot;
+    #pd controller
+    actions_scaled = actions * self.cfg.control.action_scale
+    if self.cfg.domain_rand.randomize_gains:
+        p_gains = self.randomized_p_gains
+        d_gains = self.randomized_d_gains
+        motor_strength = self.randomized_motor_strength
+    else:
+        p_gains = self.p_gains.repeat(self.num_envs, 1)
+        d_gains = self.d_gains.repeat(self.num_envs, 1)
+        motor_strength = self.motor_strength
+    control_type = self.cfg.control.control_type
+    if control_type==&quot;P&quot;:
+        torques = p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos + self.motor_offsets) - d_gains*self.dof_vel
+    else:
+        raise NameError(f&quot;Unknown controller type: {control_type}&quot;)
+    
+    torques *= motor_strength
+    torque_limits = self.custom_torque_limits
+    return torch.clip(torques, -torque_limits, torque_limits)
+</code></pre>
+<p>核心部分当然是这段代码：</p>
+<pre><code class="language-python">torques = p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos + self.motor_offsets) - d_gains*self.dof_vel
+</code></pre>
+<p>这就是PD控制器的核心，其中，actions_scaled + self.default_dof_pos+ self.motor_offsets 表示目标位置，self.dof_pos表示关节当前位置，二者作差得到偏差值，作为比例项；self.dof_vel表示当前关节速度，给出负值是让它作为阻尼阻止关节的快速运动，从而减少超调和振荡</p>
+<p>显然，在这个计算中，我们默认了期望速度为0,这主要基于下面的考量：</p>
+<ul>
+<li><p>在每个控制周期内期望位置视为恒定；</p>
+</li>
+<li><p>微分项主要用来提供速度阻尼，而非提高跟踪精度；</p>
+</li>
+<li><p>策略输出的位置变化相对平滑，且控制频率足够高；</p>
+</li>
+<li><p>期望速度信息不可靠或非必需。</p>
+</li>
+</ul>
+<p>总而言之，通过PD参数设计，机器人将动作转化为力矩，继而通过下面的pipeline输入到仿真机器人或者实体机器人中：</p>
+<pre><code class="language-python">def step(self,actions):
+    #......
+    for _ in range(self.cfg.control.decimation):
+        self.torques = self._compute_torques(actions_after_push).view(self.torques.shape)
+        self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
+        self.gym.simulate(self.sim)
+    #......
+</code></pre>
+<p>最终通过gym的API将电机转矩送给仿真实体，让仿真的机器人动起来。</p>
+<p>可见，机器人的PD参数至关重要，在实践中，如果机器人的PD参数不合适，会有高频振荡抑或无法行动的情况发生，此时可能会触发仿真环境中机器人频繁的reset重置，从而使得机器人存活时间过低，强化学习训练必然失败。</p>
+<p>PD参数并非唯一一套参数，事实上只要是合理的PD参数，理论上能使机器人在仿真环境中正常存活、与环境进行交互的，都可以在机器人上做配置——HUGWBC中针对H1的PD配置就是如此。当然，也有工作专门针对机器人的PD参数做调整，比如<code>BeyondMimic</code>就根据G1电机的型号做了特殊配置，这一切的目的都是从配置层面上保证机器人运动的流畅性和鲁棒性。</p>
+<h4>3.奖励函数设计</h4>
+<h4>4.强化学习算法设计</h4>
+<h4>5.训练设计</h4>
+4:T4556,<h1>TechBlog - 个人技术博客</h1>
+<p>基于 Next.js 14 构建的静态技术博客，支持 Markdown 写作、LaTeX 公式、代码高亮、封面图，自动部署到 GitHub Pages。</p>
+<p><strong>在线访问：</strong> <a href="https://inzeroworld.com.cn/TechBlog/">https://inzeroworld.com.cn/TechBlog/</a></p>
+<hr>
+<h2>目录</h2>
+<ol>
+<li><a href="#1-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B">快速开始</a></li>
+<li><a href="#2-%E5%86%99%E5%8D%9A%E5%AE%A2%E6%96%87%E7%AB%A0">写博客文章</a></li>
+<li><a href="#3-%E6%96%87%E7%AB%A0%E5%85%83%E6%95%B0%E6%8D%AE%E8%AF%B4%E6%98%8E">文章元数据说明</a></li>
+<li><a href="#4-markdown-%E8%AF%AD%E6%B3%95">Markdown 语法</a></li>
+<li><a href="#5-latex-%E5%85%AC%E5%BC%8F">LaTeX 公式</a></li>
+<li><a href="#6-%E5%B0%81%E9%9D%A2%E5%9B%BE%E8%AE%BE%E7%BD%AE">封面图设置</a></li>
+<li><a href="#7-%E6%9B%B4%E6%8D%A2%E8%83%8C%E6%99%AF%E5%9B%BE">更换背景图</a></li>
+<li><a href="#8-%E6%96%B0%E5%BB%BA%E8%87%AA%E5%AE%9A%E4%B9%89%E9%A1%B5%E9%9D%A2">新建自定义页面</a></li>
+<li><a href="#9-%E5%8D%9A%E5%AE%A2%E4%B8%AA%E6%80%A7%E5%8C%96%E9%85%8D%E7%BD%AE">博客个性化配置</a></li>
+<li><a href="#10-%E9%83%A8%E7%BD%B2%E5%88%B0-github-pages">部署到 GitHub Pages</a></li>
+<li><a href="#11-%E6%97%A5%E5%B8%B8%E6%9B%B4%E6%96%B0%E6%B5%81%E7%A8%8B">日常更新流程</a></li>
+<li><a href="#12-%E9%A1%B9%E7%9B%AE%E7%BB%93%E6%9E%84">项目结构</a></li>
+</ol>
+<hr>
+<h2>1. 快速开始</h2>
+<h3>环境要求</h3>
+<ul>
+<li>Node.js 18.x 或以上</li>
+<li>Git</li>
+</ul>
+<h3>安装与运行</h3>
+<pre><code class="language-bash"># 克隆仓库
+git clone https://github.com/KiCola/TechBlog.git
+cd TechBlog
+
+# 安装依赖
+npm install
+
+# 启动本地开发服务器
+npm run dev
+</code></pre>
+<p>打开浏览器访问 <a href="http://localhost:3000">http://localhost:3000</a></p>
+<hr>
+<h2>2. 写博客文章</h2>
+<p>所有文章存放在 <code>posts/</code> 目录下，每篇文章是一个 <code>.md</code> 文件。</p>
+<h3>创建新文章</h3>
+<p>在 <code>posts/</code> 目录下新建一个 Markdown 文件，文件名即为文章的 URL：</p>
+<pre><code>posts/
+├── my-first-post.md        → /posts/my-first-post
+├── react-hooks-guide.md    → /posts/react-hooks-guide
+└── algorithm-dp.md         → /posts/algorithm-dp
+</code></pre>
+<p><strong>文件名规范：</strong></p>
+<ul>
+<li>使用英文和连字符（<code>-</code>）</li>
+<li>全部小写</li>
+<li>不要有空格或中文</li>
+<li>例如：<code>deep-learning-intro.md</code>、<code>cpp-pointer-notes.md</code></li>
+</ul>
+<h3>文章模板</h3>
+<pre><code class="language-markdown">---
+title: 文章标题
+date: 2026-03-17
+category: 分类名称
+tags: [标签1, 标签2, 标签3]
+cover: https://图片URL（可选）
+---
+
+## 第一个章节
+
+正文内容从这里开始...
+</code></pre>
+<hr>
+<h2>3. 文章元数据说明</h2>
+<p>每篇文章开头的 <code>---</code> 包裹部分叫做 <strong>frontmatter</strong>，用于设置文章属性：</p>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>是否必填</th>
+<th>类型</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>title</code></td>
+<td>✅ 必填</td>
+<td>字符串</td>
+<td>文章标题</td>
+<td><code>title: 我学会了 React</code></td>
+</tr>
+<tr>
+<td><code>date</code></td>
+<td>✅ 必填</td>
+<td>日期</td>
+<td>发布日期，格式 YYYY-MM-DD</td>
+<td><code>date: 2026-03-17</code></td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>可选</td>
+<td>字符串</td>
+<td>文章分类（只能填一个）</td>
+<td><code>category: 前端开发</code></td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>可选</td>
+<td>数组</td>
+<td>文章标签（可多个）</td>
+<td><code>tags: [React, Hook, JavaScript]</code></td>
+</tr>
+<tr>
+<td><code>cover</code></td>
+<td>可选</td>
+<td>URL</td>
+<td>封面图片地址</td>
+<td><code>cover: https://...</code></td>
+</tr>
+</tbody></table>
+<h3>分类（category）</h3>
+<p>分类用于首页的筛选按钮，同一篇文章只能属于一个分类：</p>
+<pre><code class="language-yaml">category: 前端开发
+</code></pre>
+<p>常用分类参考：<code>前端开发</code>、<code>后端开发</code>、<code>算法</code>、<code>机器学习</code>、<code>工具使用</code>、<code>读书笔记</code>、<code>随笔</code></p>
+<h3>标签（tags）</h3>
+<p>标签显示在文章卡片和详情页底部，一篇文章可以有多个标签：</p>
+<pre><code class="language-yaml"># 单个标签
+tags: [JavaScript]
+
+# 多个标签
+tags: [React, TypeScript, 前端工程化]
+
+# 也可以这样写
+tags:
+  - React
+  - TypeScript
+  - Hooks
+</code></pre>
+<hr>
+<h2>4. Markdown 语法</h2>
+<h3>标题</h3>
+<pre><code class="language-markdown"># 一级标题
+## 二级标题
+### 三级标题
+#### 四级标题
+</code></pre>
+<h3>文字格式</h3>
+<pre><code class="language-markdown">**加粗文字**
+*斜体文字*
+~~删除线~~
+`行内代码`
+</code></pre>
+<h3>链接与图片</h3>
+<pre><code class="language-markdown">[链接文字](https://example.com)
+
+![图片描述](图片URL)
+![本地图片](/photo.jpg)
+</code></pre>
+<h3>列表</h3>
+<pre><code class="language-markdown">- 无序列表项 1
+- 无序列表项 2
+  - 嵌套列表项
+
+1. 有序列表项 1
+2. 有序列表项 2
+</code></pre>
+<h3>引用</h3>
+<pre><code class="language-markdown">&gt; 这是一段引用文字
+&gt; 可以多行
+</code></pre>
+<h3>代码块（支持语法高亮）</h3>
+<pre><code class="language-markdown">```javascript
+function hello(name) {
+  console.log(`Hello, ${name}!`);
+}
+```
+
+```python
+def hello(name):
+    print(f&quot;Hello, {name}!&quot;)
+```
+
+```bash
+npm install react
+```
+</code></pre>
+<p>支持的语言：<code>javascript</code>、<code>typescript</code>、<code>python</code>、<code>java</code>、<code>cpp</code>、<code>rust</code>、<code>go</code>、<code>bash</code>、<code>sql</code>、<code>html</code>、<code>css</code> 等</p>
+<h3>表格</h3>
+<pre><code class="language-markdown">| 列1 | 列2 | 列3 |
+|-----|-----|-----|
+| 数据1 | 数据2 | 数据3 |
+| 数据4 | 数据5 | 数据6 |
+</code></pre>
+<h3>分割线</h3>
+<pre><code class="language-markdown">---
+</code></pre>
+<hr>
+<h2>5. LaTeX 公式</h2>
+<p>博客内置 KaTeX 支持，可以直接在 Markdown 中写数学公式。</p>
+<h3>行内公式</h3>
+<p>用单个 <code>$</code> 包裹，显示在文字中间：</p>
+<pre><code class="language-markdown">质能方程 $E = mc^2$ 是物理学基础。
+
+二次方程求根公式：$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$
+</code></pre>
+<h3>块级公式</h3>
+<p>用 <code>$$</code> 包裹，单独成行居中显示：</p>
+<pre><code class="language-markdown">$$
+\int_{-\infty}^{+\infty} e^{-x^2} dx = \sqrt{\pi}
+$$
+
+$$
+\sum_{i=1}^{n} i = \frac{n(n+1)}{2}
+$$
+</code></pre>
+<h3>常用 LaTeX 符号速查</h3>
+<table>
+<thead>
+<tr>
+<th>效果</th>
+<th>代码</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>分数</td>
+<td><code>\frac{a}{b}</code></td>
+</tr>
+<tr>
+<td>根号</td>
+<td><code>\sqrt{x}</code> 、<code>\sqrt[n]{x}</code></td>
+</tr>
+<tr>
+<td>求和</td>
+<td><code>\sum_{i=1}^{n}</code></td>
+</tr>
+<tr>
+<td>积分</td>
+<td><code>\int_{a}^{b}</code></td>
+</tr>
+<tr>
+<td>极限</td>
+<td><code>\lim_{x \to 0}</code></td>
+</tr>
+<tr>
+<td>偏导</td>
+<td><code>\partial</code></td>
+</tr>
+<tr>
+<td>无穷</td>
+<td><code>\infty</code></td>
+</tr>
+<tr>
+<td>希腊字母</td>
+<td><code>\alpha</code>、<code>\beta</code>、<code>\gamma</code>、<code>\theta</code>、<code>\lambda</code>、<code>\mu</code>、<code>\sigma</code></td>
+</tr>
+<tr>
+<td>向量</td>
+<td><code>\mathbf{v}</code> 或 <code>\vec{v}</code></td>
+</tr>
+<tr>
+<td>矩阵</td>
+<td><code>\begin{pmatrix} a &amp; b \\ c &amp; d \end{pmatrix}</code></td>
+</tr>
+<tr>
+<td>约等于</td>
+<td><code>\approx</code></td>
+</tr>
+<tr>
+<td>不等于</td>
+<td><code>\neq</code></td>
+</tr>
+<tr>
+<td>箭头</td>
+<td><code>\rightarrow</code>、<code>\leftarrow</code>、<code>\Rightarrow</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2>6. 封面图设置</h2>
+<p>在文章 frontmatter 中添加 <code>cover</code> 字段：</p>
+<pre><code class="language-yaml">---
+title: 我的文章
+date: 2026-03-17
+cover: https://images.unsplash.com/photo-xxx?w=800&amp;q=80
+---
+</code></pre>
+<h3>使用网络图片（推荐）</h3>
+<p>从以下免费图库获取图片链接：</p>
+<ul>
+<li><a href="https://unsplash.com">Unsplash</a> - 高质量免费图片，右键图片 → 复制图片地址</li>
+<li><a href="https://pexels.com">Pexels</a> - 免费商用图片</li>
+</ul>
+<p>Unsplash 图片链接可以加参数控制尺寸：</p>
+<pre><code>https://images.unsplash.com/photo-xxx?w=800&amp;q=80
+                                       ↑宽度  ↑质量(0-100)
+</code></pre>
+<h3>使用本地图片</h3>
+<ol>
+<li>将图片放入 <code>public/images/</code> 目录</li>
+<li>在 frontmatter 中引用：</li>
+</ol>
+<pre><code class="language-yaml">cover: /images/my-cover.jpg
+</code></pre>
+<p><strong>注意</strong>：部署到 GitHub Pages 后，本地图片路径需要加 <code>/TechBlog</code> 前缀：</p>
+<pre><code class="language-yaml">cover: /TechBlog/images/my-cover.jpg
+</code></pre>
+<h3>不设置封面</h3>
+<p>不填写 <code>cover</code> 字段时，系统会根据文章分类自动生成渐变色占位封面。</p>
+<hr>
+<h2>7. 更换背景图</h2>
+<p>背景图在 <code>app/layout.js</code> 中配置，本地和线上路径自动区分。</p>
+<h3>使用本地图片</h3>
+<ol>
+<li>将背景图片放入 <code>public/</code> 目录，例如 <code>public/bg.jpg</code></li>
+<li>打开 <code>app/layout.js</code>，找到第 6-10 行，修改文件名：</li>
+</ol>
+<pre><code class="language-javascript">const bgStyle = `
+  body {
+    background-image:
+      linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.82)),
+      url(&#39;${basePath}/bg.jpg&#39;);   // ← 修改这里的文件名
+  }
+`;
+</code></pre>
+<h3>使用网络图片</h3>
+<p>直接填写完整 URL，不需要 <code>basePath</code>：</p>
+<pre><code class="language-javascript">const bgStyle = `
+  body {
+    background-image:
+      linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.82)),
+      url(&#39;https://images.unsplash.com/photo-xxx?w=1920&amp;q=80&#39;);
+  }
+`;
+</code></pre>
+<h3>调整遮罩透明度</h3>
+<p><code>rgba(13, 17, 23, 0.82)</code> 中最后的数字控制遮罩深度：</p>
+<ul>
+<li><code>0.6</code> → 图片较亮，文字可能不清晰</li>
+<li><code>0.82</code> → 默认，图片较暗，文字清晰</li>
+<li><code>0.92</code> → 图片很暗，接近纯色背景</li>
+</ul>
+<hr>
+<h2>8. 新建自定义页面</h2>
+<h3>新建普通页面</h3>
+<p>在 <code>app/</code> 目录下新建文件夹和 <code>page.js</code>，路径即为 URL：</p>
+<pre><code>app/about/page.js   →   /about
+app/projects/page.js →  /projects
+</code></pre>
+<p><strong>示例：新建「关于我」页面</strong></p>
+<p>创建 <code>app/about/page.js</code>：</p>
+<pre><code class="language-jsx">import &#39;../styles/post.css&#39;;
+
+export const metadata = {
+  title: &#39;关于我&#39;,
+};
+
+export default function AboutPage() {
+  return (
+    &lt;div className=&quot;post-detail&quot;&gt;
+      &lt;article className=&quot;post-article&quot;&gt;
+        &lt;header className=&quot;post-header&quot;&gt;
+          &lt;h1 className=&quot;post-title&quot;&gt;关于我&lt;/h1&gt;
+        &lt;/header&gt;
+        &lt;div className=&quot;post-content&quot;&gt;
+          &lt;p&gt;这里写你的自我介绍...&lt;/p&gt;
+          &lt;p&gt;研究方向：xxx&lt;/p&gt;
+          &lt;p&gt;联系方式：your@email.com&lt;/p&gt;
+        &lt;/div&gt;
+      &lt;/article&gt;
+    &lt;/div&gt;
+  );
+}
+</code></pre>
+<h3>在导航栏添加链接</h3>
+<p>编辑 <code>components/Navbar.js</code>，在 <code>navbar-links</code> 中添加：</p>
+<pre><code class="language-jsx">&lt;div className=&quot;navbar-links&quot;&gt;
+  &lt;Link href=&quot;/&quot;&gt;首页&lt;/Link&gt;
+  &lt;Link href=&quot;/about&quot;&gt;关于我&lt;/Link&gt;        {/* 新增 */}
+  &lt;Link href=&quot;/projects&quot;&gt;项目&lt;/Link&gt;      {/* 新增 */}
+  &lt;a href=&quot;https://github.com/KiCola&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot; className=&quot;btn-github&quot;&gt;
+    ⭐ GitHub
+  &lt;/a&gt;
+&lt;/div&gt;
+</code></pre>
+<hr>
+<h2>9. 博客个性化配置</h2>
+<h3>修改博客标题和描述</h3>
+<p>编辑 <code>app/layout.js</code>：</p>
+<pre><code class="language-javascript">export const metadata = {
+  title: {
+    default: &#39;你的博客名称&#39;,        // ← 修改
+    template: &#39;%s | 你的博客名称&#39;,  // ← 修改
+  },
+  description: &#39;你的博客描述&#39;,      // ← 修改
+};
+</code></pre>
+<h3>修改导航栏 Logo</h3>
+<p>编辑 <code>components/Navbar.js</code>：</p>
+<pre><code class="language-jsx">&lt;span className=&quot;brand-name&quot;&gt;TechBlog&lt;/span&gt;  {/* ← 改为你的名字 */}
+</code></pre>
+<h3>修改 GitHub 链接</h3>
+<p>编辑 <code>components/Navbar.js</code>：</p>
+<pre><code class="language-jsx">&lt;a href=&quot;https://github.com/你的用户名&quot; ...&gt;
+</code></pre>
+<h3>修改主题颜色</h3>
+<p>编辑 <code>styles/globals.css</code> 中的 CSS 变量：</p>
+<pre><code class="language-css">:root {
+  --accent: #58a6ff;        /* 主强调色（链接、按钮、标签）*/
+  --accent-green: #3fb950;  /* 标签悬停色 */
+  --accent-warm: #f78166;   /* 警告/删除色 */
+  --bg-primary: #0d1117;    /* 主背景色 */
+  --bg-card: #1c2128;       /* 卡片背景色 */
+  --text-primary: #e6edf3;  /* 主文字色 */
+  --text-secondary: #8b949e;/* 次要文字色 */
+}
+</code></pre>
+<h3>修改页脚文字</h3>
+<p>编辑 <code>app/layout.js</code>：</p>
+<pre><code class="language-jsx">&lt;p&gt;© {new Date().getFullYear()} 你的名字 · 你的口号&lt;/p&gt;
+</code></pre>
+<hr>
+<h2>10. 部署到 GitHub Pages</h2>
+<h3>自动部署（每次 push 自动触发）</h3>
+<p>项目已配置 GitHub Actions，每次推送到 <code>main</code> 分支自动部署。</p>
+<p><strong>首次配置：</strong></p>
+<ol>
+<li>进入 GitHub 仓库 → <strong>Settings</strong> → <strong>Actions</strong> → <strong>General</strong></li>
+<li><strong>Workflow permissions</strong> 选择 <code>Read and write permissions</code> → <strong>Save</strong></li>
+<li>进入 <strong>Settings</strong> → <strong>Pages</strong></li>
+<li>Source 设为 <code>gh-pages</code> 分支，<code>/ (root)</code> → <strong>Save</strong></li>
+</ol>
+<p><strong>之后每次更新只需：</strong></p>
+<pre><code class="language-bash">git add .
+git commit -m &quot;更新说明&quot;
+git push
+</code></pre>
+<p>2-5 分钟后访问 <a href="https://inzeroworld.com.cn/TechBlog/">https://inzeroworld.com.cn/TechBlog/</a> 查看更新。</p>
+<hr>
+<h2>11. 日常更新流程</h2>
+<pre><code>① 在 posts/ 目录新建或编辑 .md 文件
+        ↓
+② npm run dev  →  http://localhost:3000 预览（可选）
+        ↓
+③ git add .
+   git commit -m &quot;新增文章：xxx&quot;
+   git push
+        ↓
+④ GitHub Actions 自动构建（2-5 分钟）
+        ↓
+⑤ 访问 https://inzeroworld.com.cn/TechBlog/ 查看 ✅
+</code></pre>
+<h3>常用 Git 命令</h3>
+<pre><code class="language-bash">git status              # 查看改动状态
+git add .               # 添加所有改动
+git add posts/xxx.md    # 只添加指定文件
+git commit -m &quot;说明&quot;    # 提交
+git push                # 推送
+git log --oneline       # 查看提交历史
+</code></pre>
+<hr>
+<h2>12. 项目结构</h2>
+<pre><code>TechBlog/
+├── app/                        # Next.js 应用
+│   ├── layout.js              # 全局布局（修改标题、背景图在这里）
+│   ├── page.js                # 首页入口
+│   └── posts/[slug]/page.js   # 文章详情页
+├── components/
+│   ├── Navbar.js              # 导航栏（修改链接、Logo 在这里）
+│   └── HomeClient.js          # 首页客户端组件
+├── lib/
+│   └── posts.js               # 文章读取、Markdown + LaTeX 渲染
+├── posts/                     # 📝 所有博客文章（在这里写文章）
+│   ├── welcome.md
+│   └── your-post.md
+├── public/                    # 静态资源
+│   └── bg.jpg                 # 背景图片
+├── styles/
+│   ├── globals.css            # 全局样式和 CSS 变量
+│   ├── home.css               # 首页样式
+│   ├── post.css               # 文章详情页样式
+│   └── navbar.css             # 导航栏样式
+├── .github/workflows/
+│   └── deploy.yml             # GitHub Actions 自动部署配置
+├── next.config.js             # Next.js 配置（basePath 等）
+└── package.json
+</code></pre>
+<hr>
+<h2>常见问题</h2>
+<p><strong>Q: 文章不显示？</strong>
+A: 检查文件名是否为英文、frontmatter 格式是否正确（特别是 <code>date</code> 字段格式）。</p>
+<p><strong>Q: LaTeX 公式显示不正常？</strong>
+A: 确保公式内的 <code>_</code> 和 <code>^</code> 没有被 Markdown 解析，可以用 <code>\</code> 转义特殊字符。</p>
+<p><strong>Q: 本地正常但线上样式乱了？</strong>
+A: 检查 <code>next.config.js</code> 中的 <code>basePath</code> 是否为 <code>/TechBlog</code>。</p>
+<p><strong>Q: 推送后多久能看到更新？</strong>
+A: 通常 2-5 分钟，可在仓库 Actions 标签查看进度。</p>
+<p><strong>Q: 如何删除文章？</strong>
+A: 删除 <code>posts/</code> 目录下对应的 <code>.md</code> 文件，然后 push。</p>
+<hr>
+<p><em>Built with <a href="https://nextjs.org">Next.js</a> · Deployed on <a href="https://pages.github.com">GitHub Pages</a></em></p>
+5:Td3c,<h1>技术路线：人形机器人运动控制</h1>
+<p>在这个具身智能的概念疯狂生长的年代，我写下这篇技术路线和一点自己的感想，既为自己的未来做规划，也为记录一些读研期间的思考。</p>
+<p>人形机器人作为近几年来实体行业炒得最热的概念，其本质究竟是一场技术革命，还是一次资本造势，并非本文讨论的重点。事实上，笔者也身处当局，既热忱于机器人事业，也迷茫于未来发展和选择。但殊涂同归，做一个领域就要尽力追求顶尖，谨以此文写下我的规划和想法，供自己与诸君参阅。</p>
+<h2>人形机器人领域概览</h2>
+<h3>参考文献</h3>
+<p> <a href="https://arxiv.org/abs/2501.02116">Gu 等 - 2025 - Humanoid Locomotion and Manipulation Current Progress and Challenges in Control, Planning, and Lear.pdf</a> </p>
+<h3>概述</h3>
+<p>人形机器人运动控制领域有诸多分类，并未达成完全的一致。就拿最常见的Locomotion和Manipulation举例，有的人认为仅仅控制Humanoid的下肢关节做移动才叫locomotion，也有人认为全身关节参与的移动也可以叫locomotion；同时，由于全关节参与到任务的执行中，所以不管是全关节的Locomotion还是Manipulation任务，都可以称之为全身运动控制WBC任务......</p>
+<p>在此，笔者为自己划定人形运控领域的分类：</p>
+<ol>
+<li>Locomotion——指让机器人移动、动作跟踪等，体现机器人平台移动能力的任务</li>
+<li>Manipulation——指让机器人伸展末端执行器（尤其是上肢）、实现精细操作等，体现机器人平台操作性能的任务</li>
+<li>Loco_Manipulation——二者结合的任务</li>
+</ol>
+<p>其中，狭义的人形机器人运动控制就落到了Locomotion任务上。按我的理解为人形机器人运动控制领域下定义，就是：通过各种技术手段，让人形机器人执行某种动作、按某种方式移动，从而实现平稳、鲁棒、通用的运动控制的研究领域。</p>
+<h3>方向细分</h3>
+<p>以笔者的理解，有以下方向细分：</p>
+<ul>
+<li>强化学习运动控制<ul>
+<li>指用纯RL设计奖励工程，创建仿真环境，不使用额外数据辅助，实现机器人运动控制</li>
+<li>Humanoid-gym、HugWBC等</li>
+</ul>
+</li>
+<li>Motion Tracking<ul>
+<li>指通过动捕（Mocap）数据集，用模仿学习，让机器人跟踪动作参考，习得动作专家模型，从而控制机器人执行各种运动。</li>
+<li>AMP、BeyondMimic等</li>
+</ul>
+</li>
+<li>视频动作生成<ul>
+<li>指通过视频生成参考动作，供机器人学习的类MotionTracking任务</li>
+</ul>
+</li>
+<li>遥操作<ul>
+<li>指利用VR、视觉相机等各种媒介，让机器人根据人类动作复现操作</li>
+</ul>
+</li>
+<li>VLA</li>
+<li>带感知的运动控制</li>
+<li>.etc</li>
+</ul>
+<p>这几个领域绝非互相独立，而是彼此嵌合的技术方向，甚至可以从上往下依次供入门者研究。</p>
+<h2>Post Thinkings</h2>
+<p>在写下这篇文章之前，我刚在线上参与了Lumina具身智能社区的论文研读，旁听了BIGAI的几位同龄人（上下不超过两岁吧）的Promising and Creative的论文工作，不免生发了很多思考，记录在文末吧。<img src="/image-20260318171310824.png" alt="image-20260318171310824"></p>
+6:Tb01f,<h2>LaTeX 公式支持</h2>
+<p>本博客通过 KaTeX 支持完整的 LaTeX 数学公式渲染，使用方法与标准 LaTeX 一致。</p>
+<h2>行内公式</h2>
+<p>使用单个美元符号 <code>$...$</code> 插入行内公式。</p>
+<p>例如，爱因斯坦质能方程 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.05764em;">E</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.8141em;"></span><span class="mord mathnormal">m</span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span>，欧拉公式 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.908em;vertical-align:-0.0833em;"></span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8247em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">iπ</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">1</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span>，或者二次方程求根公式 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.3845em;vertical-align:-0.345em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.0395em;"><span style="top:-2.655em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">2</span><span class="mord mathnormal mtight">a</span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.394em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mathnormal mtight">b</span><span class="mbin mtight">±</span><span class="mord sqrt mtight"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9221em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mtight" style="padding-left:0.833em;"><span class="mord mtight"><span class="mord mathnormal mtight">b</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.7463em;"><span style="top:-2.786em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mbin mtight">−</span><span class="mord mtight">4</span><span class="mord mathnormal mtight">a</span><span class="mord mathnormal mtight">c</span></span></span><span style="top:-2.8821em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail mtight" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.08em" viewBox="0 0 400000 1080" preserveAspectRatio="xMinYMin slice"><path d="M95,702
+c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14
+c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54
+c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10
+s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429
+c69,-144,104.5,-217.7,106.5,-221
+l0 -0
+c5.3,-9.3,12,-14,20,-14
+H400000v40H845.2724
+s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7
+c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z
+M834 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1179em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.345em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span>。</p>
+<h2>块级公式</h2>
+<p>使用双美元符号 <code>$$...$$</code> 插入独立的块级公式：</p>
+<p><strong>麦克斯韦方程组：</strong></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord">∇</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6861em;"></span><span class="mord mathbf">E</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.9436em;vertical-align:-0.836em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">ε</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">ρ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.836em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord">∇</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6861em;"></span><span class="mord mathbf">B</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span></span></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord">∇</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6861em;"></span><span class="mord mathbf">E</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.0574em;vertical-align:-0.686em;"></span><span class="mord">−</span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord" style="margin-right:0.05556em;">∂</span><span class="mord mathnormal">t</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord" style="margin-right:0.05556em;">∂</span><span class="mord mathbf">B</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.7667em;vertical-align:-0.0833em;"></span><span class="mord">∇</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6861em;"></span><span class="mord mathbf">B</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.4em;vertical-align:-0.95em;"></span><span class="mord"><span class="mord mathnormal">μ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size3">(</span></span><span class="mord mathbf">J</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal">ε</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3714em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord" style="margin-right:0.05556em;">∂</span><span class="mord mathnormal">t</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord" style="margin-right:0.05556em;">∂</span><span class="mord mathbf">E</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size3">)</span></span></span></span></span></span></span></p>
+<p><strong>高斯积分：</strong></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:2.4915em;vertical-align:-0.9703em;"></span><span class="mop"><span class="mop op-symbol large-op" style="margin-right:0.44445em;position:relative;top:-0.0011em;">∫</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.5212em;"><span style="top:-1.7881em;margin-left:-0.4445em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mtight">∞</span></span></span></span><span style="top:-3.8129em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">+</span><span class="mord mtight">∞</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9703em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:1.0369em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mtight"><span class="mord mathnormal mtight">x</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-2.931em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span class="mord mathnormal">d</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.1908em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8492em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal" style="margin-right:0.03588em;">π</span></span></span><span style="top:-2.8092em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.08em" viewBox="0 0 400000 1080" preserveAspectRatio="xMinYMin slice"><path d="M95,702
+c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14
+c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54
+c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10
+s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429
+c69,-144,104.5,-217.7,106.5,-221
+l0 -0
+c5.3,-9.3,12,-14,20,-14
+H400000v40H845.2724
+s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7
+c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z
+M834 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1908em;"><span></span></span></span></span></span></span></span></span></span></p>
+<p><strong>矩阵：</strong></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">A</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:3.6em;vertical-align:-1.55em;"></span><span class="minner"><span class="mopen"><span class="delimsizing mult"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:2.05em;"><span style="top:-4.05em;"><span class="pstrut" style="height:5.6em;"></span><span style="width:0.875em;height:3.600em;"><svg xmlns="http://www.w3.org/2000/svg" width="0.875em" height="3.600em" viewBox="0 0 875 3600"><path d="M863,9c0,-2,-2,-5,-6,-9c0,0,-17,0,-17,0c-12.7,0,-19.3,0.3,-20,1
+c-5.3,5.3,-10.3,11,-15,17c-242.7,294.7,-395.3,682,-458,1162c-21.3,163.3,-33.3,349,
+-36,557 l0,84c0.2,6,0,26,0,60c2,159.3,10,310.7,24,454c53.3,528,210,
+949.7,470,1265c4.7,6,9.7,11.7,15,17c0.7,0.7,7,1,19,1c0,0,18,0,18,0c4,-4,6,-7,6,-9
+c0,-2.7,-3.3,-8.7,-10,-18c-135.3,-192.7,-235.5,-414.3,-300.5,-665c-65,-250.7,-102.5,
+-544.7,-112.5,-882c-2,-104,-3,-167,-3,-189
+l0,-92c0,-162.7,5.7,-314,17,-454c20.7,-272,63.7,-513,129,-723c65.3,
+-210,155.3,-396.3,270,-559c6.7,-9.3,10,-15.3,10,-18z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.55em;"><span></span></span></span></span></span></span><span class="mord"><span class="mtable"><span class="col-align-c"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:2.05em;"><span style="top:-4.21em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">11</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.01em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">21</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-1.81em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">31</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.55em;"><span></span></span></span></span></span><span class="arraycolsep" style="width:0.5em;"></span><span class="arraycolsep" style="width:0.5em;"></span><span class="col-align-c"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:2.05em;"><span style="top:-4.21em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">12</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.01em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">22</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-1.81em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">32</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.55em;"><span></span></span></span></span></span><span class="arraycolsep" style="width:0.5em;"></span><span class="arraycolsep" style="width:0.5em;"></span><span class="col-align-c"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:2.05em;"><span style="top:-4.21em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">13</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-3.01em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">23</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span><span style="top:-1.81em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">33</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.55em;"><span></span></span></span></span></span></span></span><span class="mclose"><span class="delimsizing mult"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:2.05em;"><span style="top:-4.05em;"><span class="pstrut" style="height:5.6em;"></span><span style="width:0.875em;height:3.600em;"><svg xmlns="http://www.w3.org/2000/svg" width="0.875em" height="3.600em" viewBox="0 0 875 3600"><path d="M76,0c-16.7,0,-25,3,-25,9c0,2,2,6.3,6,13c21.3,28.7,42.3,60.3,
+63,95c96.7,156.7,172.8,332.5,228.5,527.5c55.7,195,92.8,416.5,111.5,664.5
+c11.3,139.3,17,290.7,17,454c0,28,1.7,43,3.3,45l0,9
+c-3,4,-3.3,16.7,-3.3,38c0,162,-5.7,313.7,-17,455c-18.7,248,-55.8,469.3,-111.5,664
+c-55.7,194.7,-131.8,370.3,-228.5,527c-20.7,34.7,-41.7,66.3,-63,95c-2,3.3,-4,7,-6,11
+c0,7.3,5.7,11,17,11c0,0,11,0,11,0c9.3,0,14.3,-0.3,15,-1c5.3,-5.3,10.3,-11,15,-17
+c242.7,-294.7,395.3,-681.7,458,-1161c21.3,-164.7,33.3,-350.7,36,-558
+l0,-144c-2,-159.3,-10,-310.7,-24,-454c-53.3,-528,-210,-949.7,
+-470,-1265c-4.7,-6,-9.7,-11.7,-15,-17c-0.7,-0.7,-6.7,-1,-18,-1z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.55em;"><span></span></span></span></span></span></span></span></span></span></span></span></p>
+<p><strong>贝叶斯定理：</strong></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mopen">(</span><span class="mord mathnormal">A</span><span class="mord">∣</span><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.363em;vertical-align:-0.936em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="mclose">)</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="mord">∣</span><span class="mord mathnormal">A</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">⋅</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mopen">(</span><span class="mord mathnormal">A</span><span class="mclose">)</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.936em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
+<p><strong>傅里叶变换：</strong></p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.2079em;vertical-align:-0.25em;"></span><span class="mord accent"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9579em;"><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span></span><span style="top:-3.2634em;"><span class="pstrut" style="height:3em;"></span><span class="accent-body" style="left:-0.0833em;"><span class="mord">^</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.1944em;"><span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.04601em;">ξ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.4915em;vertical-align:-0.9703em;"></span><span class="mop"><span class="mop op-symbol large-op" style="margin-right:0.44445em;position:relative;top:-0.0011em;">∫</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.5212em;"><span style="top:-1.7881em;margin-left:-0.4445em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mtight">∞</span></span></span></span><span style="top:-3.8129em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">+</span><span class="mord mtight">∞</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.9703em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8991em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mtight">2</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">π</span><span class="mord mathnormal mtight">i</span><span class="mord mathnormal mtight">x</span><span class="mord mathnormal mtight" style="margin-right:0.04601em;">ξ</span></span></span></span></span></span></span></span></span><span class="mord mathnormal">d</span><span class="mord mathnormal">x</span></span></span></span></span></p>
+<h2>混合使用</h2>
+<p>可以在正文中自由混合文字、代码和公式。</p>
+<p>例如，对于函数 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.8141em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span>，其导数为 <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0019em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.7519em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">2</span><span class="mord mathnormal">x</span></span></span></span>，用代码表示：</p>
+<pre><code class="language-python">def f(x):
+    return x ** 2
+
+def f_prime(x):
+    return 2 * x
+</code></pre>
+<p>其中导数的定义是：</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0519em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8019em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.1791em;vertical-align:-0.7521em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6944em;"><span style="top:-2.3479em;margin-left:0em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">h</span><span class="mrel mtight">→</span><span class="mord mtight">0</span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span><span class="mop">lim</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7521em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">h</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord mathnormal">h</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mopen">(</span><span class="mord mathnormal">x</span><span class="mclose">)</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></p>
+<h2>常用 LaTeX 符号</h2>
+<table>
+<thead>
+<tr>
+<th>符号</th>
+<th>LaTeX 代码</th>
+<th>效果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>求和</td>
+<td><code>\sum_{i=1}^{n}</code></td>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.104em;vertical-align:-0.2997em;"></span><span class="mop"><span class="mop op-symbol small-op" style="position:relative;top:0em;">∑</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8043em;"><span style="top:-2.4003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mrel mtight">=</span><span class="mord mtight">1</span></span></span></span><span style="top:-3.2029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2997em;"><span></span></span></span></span></span></span></span></span></span></td>
+</tr>
+<tr>
+<td>积分</td>
+<td><code>\int_{a}^{b}</code></td>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.3998em;vertical-align:-0.3558em;"></span><span class="mop"><span class="mop op-symbol small-op" style="margin-right:0.19445em;position:relative;top:-0.0006em;">∫</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.044em;"><span style="top:-2.3442em;margin-left:-0.1945em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">a</span></span></span></span><span style="top:-3.2579em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">b</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.3558em;"><span></span></span></span></span></span></span></span></span></span></td>
+</tr>
+<tr>
+<td>分数</td>
+<td><code>\frac{a}{b}</code></td>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0404em;vertical-align:-0.345em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6954em;"><span style="top:-2.655em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">b</span></span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.394em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">a</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.345em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></td>
+</tr>
+<tr>
+<td>根号</td>
+<td><code>\sqrt{x}</code></td>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.04em;vertical-align:-0.2397em;"></span><span class="mord sqrt"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8003em;"><span class="svg-align" style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span class="mord" style="padding-left:0.833em;"><span class="mord mathnormal">x</span></span></span><span style="top:-2.7603em;"><span class="pstrut" style="height:3em;"></span><span class="hide-tail" style="min-width:0.853em;height:1.08em;"><svg xmlns="http://www.w3.org/2000/svg" width="400em" height="1.08em" viewBox="0 0 400000 1080" preserveAspectRatio="xMinYMin slice"><path d="M95,702
+c-2.7,0,-7.17,-2.7,-13.5,-8c-5.8,-5.3,-9.5,-10,-9.5,-14
+c0,-2,0.3,-3.3,1,-4c1.3,-2.7,23.83,-20.7,67.5,-54
+c44.2,-33.3,65.8,-50.3,66.5,-51c1.3,-1.3,3,-2,5,-2c4.7,0,8.7,3.3,12,10
+s173,378,173,378c0.7,0,35.3,-71,104,-213c68.7,-142,137.5,-285,206.5,-429
+c69,-144,104.5,-217.7,106.5,-221
+l0 -0
+c5.3,-9.3,12,-14,20,-14
+H400000v40H845.2724
+s-225.272,467,-225.272,467s-235,486,-235,486c-2.7,4.7,-9,7,-19,7
+c-6,0,-10,-1,-12,-3s-194,-422,-194,-422s-65,47,-65,47z
+M834 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2397em;"><span></span></span></span></span></span></span></span></span></td>
+</tr>
+<tr>
+<td>希腊字母</td>
+<td><code>\alpha, \beta, \gamma</code></td>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0037em;">α</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.05556em;">γ</span></span></span></span></td>
+</tr>
+<tr>
+<td>偏导</td>
+<td><code>\partial</code></td>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6944em;"></span><span class="mord" style="margin-right:0.05556em;">∂</span></span></span></span></td>
+</tr>
+<tr>
+<td>无穷</td>
+<td><code>\infty</code></td>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord">∞</span></span></span></span></td>
+</tr>
+<tr>
+<td>箭头</td>
+<td><code>\rightarrow</code></td>
+<td><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.3669em;"></span><span class="mrel">→</span></span></span></span></td>
+</tr>
+</tbody></table>
+7:Tc09,<h2>什么是静态博客？</h2>
+<p>静态博客是指在构建时就生成所有 HTML 文件，无需服务器动态处理请求。这种方式有以下优势：</p>
+<ul>
+<li>🚀 <strong>超快速度</strong>：直接加载 HTML，无需数据库查询</li>
+<li>🔒 <strong>更安全</strong>：没有后端服务器，减少攻击面</li>
+<li>💰 <strong>免费托管</strong>：GitHub Pages 完全免费</li>
+<li>📱 <strong>SEO 友好</strong>：所有内容都是静态 HTML，搜索引擎易于索引</li>
+</ul>
+<h2>为什么选择 Next.js？</h2>
+<p>Next.js 提供了完美的静态生成能力：</p>
+<pre><code class="language-javascript">// next.config.js
+const nextConfig = {
+  output: &#39;export&#39;,  // 启用静态导出
+  images: {
+    unoptimized: true,  // 不优化图片
+  },
+};
+</code></pre>
+<h2>项目架构</h2>
+<pre><code>posts/
+├── welcome.md
+├── my-first-post.md
+└── another-article.md
+
+app/
+├── layout.js          # 全局布局
+├── page.js            # 首页（列表）
+└── posts/[slug]/page.js  # 文章详情页
+
+lib/
+└── posts.js           # 读取和解析 Markdown
+</code></pre>
+<h2>核心功能实现</h2>
+<h3>1. 读取 Markdown 文件</h3>
+<pre><code class="language-javascript">// lib/posts.js
+import fs from &#39;fs&#39;;
+import matter from &#39;gray-matter&#39;;
+
+export function getAllPosts() {
+  const files = fs.readdirSync(&#39;posts&#39;);
+  return files.map(file =&gt; {
+    const content = fs.readFileSync(`posts/${file}`, &#39;utf8&#39;);
+    const { data, content: body } = matter(content);
+    return { ...data, content: body };
+  });
+}
+</code></pre>
+<h3>2. 生成静态路由</h3>
+<pre><code class="language-javascript">// app/posts/[slug]/page.js
+export async function generateStaticParams() {
+  const posts = getAllPosts();
+  return posts.map(post =&gt; ({
+    slug: post.slug,
+  }));
+}
+</code></pre>
+<h3>3. 渲染 Markdown</h3>
+<pre><code class="language-javascript">import { marked } from &#39;marked&#39;;
+
+const html = marked(markdownContent);
+</code></pre>
+<h2>部署流程</h2>
+<h3>GitHub Actions 自动化</h3>
+<p>每次 push 到 main 分支时：</p>
+<ol>
+<li>安装依赖</li>
+<li>运行 <code>npm run build</code></li>
+<li>生成 <code>out/</code> 目录</li>
+<li>部署到 <code>gh-pages</code> 分支</li>
+<li>GitHub Pages 自动发布</li>
+</ol>
+<pre><code class="language-yaml"># .github/workflows/deploy.yml
+- name: Build
+  run: npm run build
+
+- name: Deploy
+  uses: peaceiris/actions-gh-pages@v3
+  with:
+    publish_dir: ./out
+</code></pre>
+<h2>性能优化</h2>
+<ul>
+<li>✅ 静态 HTML - 无需服务器计算</li>
+<li>✅ CSS 内联 - 减少 HTTP 请求</li>
+<li>✅ 图片优化 - 使用现代格式</li>
+<li>✅ 代码分割 - 按需加载</li>
+</ul>
+<h2>总结</h2>
+<p>这个博客系统提供了：</p>
+<ul>
+<li>📝 简单的 Markdown 写作体验</li>
+<li>🎨 现代化的暗黑主题 UI</li>
+<li>🚀 一键部署到 GitHub Pages</li>
+<li>📊 完整的分类和标签系统</li>
+<li>🔍 SEO 友好的静态生成</li>
+</ul>
+<p>开始写作吧！</p>
+8:T68e,<h2>你好，世界！👋</h2>
+<p>欢迎来到这个技术博客。这里将记录我在学习和工作中积累的技术心得、踩过的坑以及一些有趣的发现。</p>
+<h2>这个博客能做什么？</h2>
+<ul>
+<li><strong>Markdown 写作</strong>：完整支持 GFM（GitHub Flavored Markdown）语法</li>
+<li><strong>代码高亮</strong>：支持多种编程语言的语法展示</li>
+<li><strong>图片上传</strong>：拖拽或粘贴图片即可上传</li>
+<li><strong>分类管理</strong>：通过分类和标签组织文章</li>
+<li><strong>实时预览</strong>：编辑时随时切换预览模式</li>
+</ul>
+<h2>代码示例</h2>
+<pre><code class="language-javascript">// 一个简单的 React Hook 示例
+import { useState, useEffect } from &#39;react&#39;;
+
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() =&gt; {
+    const timer = setTimeout(() =&gt; {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () =&gt; clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+</code></pre>
+<h2>Markdown 语法速查</h2>
+<table>
+<thead>
+<tr>
+<th>语法</th>
+<th>效果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>**加粗**</code></td>
+<td><strong>加粗</strong></td>
+</tr>
+<tr>
+<td><code>*斜体*</code></td>
+<td><em>斜体</em></td>
+</tr>
+<tr>
+<td><code>`代码`</code></td>
+<td><code>代码</code></td>
+</tr>
+<tr>
+<td><code>&gt; 引用</code></td>
+<td>引用块</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>好记性不如烂笔头。用文字记录下来的知识，才真正属于自己。</p>
+</blockquote>
+<p>现在就去写下你的第一篇技术文章吧！</p>
+0:["850Bi28titfQOUU_LyGkm",[[["",{"children":["__PAGE__",{}]},"$undefined","$undefined",true],["",{"children":["__PAGE__",{},[["$L1",["$","$L2",null,{"posts":[{"slug":"HugWBC","title":"从HUGWBC学通强化学习运控","date":"$D2026-03-19T00:00:00.000Z","category":"Humanoid","tags":["Humanoid","强化学习"],"cover":"/TechBlog/wallhaven-vqd8j8.jpg","excerpt":"从HUGWBC学通强化学习运动控制\n\n 项目背景\n\nimage-20260319134135511(/image-20260319134135511.png)\n\nHUGWBC是上海交通大学和AI Lab团队联合发表在RSS2025上的一篇关于通用人形机器人全身运动控制器的文章\n\nhttps://arxiv.org/abs/2502.03206\n\nHUGWBC目前代码已开源，项目链接如下\n\nht","content":"$3"},{"slug":"README","title":"README","date":"$D2026-03-17T00:00:00.000Z","category":"随笔","tags":["博客","介绍"],"cover":null,"excerpt":"TechBlog - 个人技术博客\n\n基于 Next.js 14 构建的静态技术博客，支持 Markdown 写作、LaTeX 公式、代码高亮、封面图，自动部署到 GitHub Pages。\n\n在线访问： https://inzeroworld.com.cn/TechBlog/\n\n---\n\n 目录\n\n1. 快速开始(1-快速开始)\n2. 写博客文章(2-写博客文章)\n3. 文章元数据说明(3-","content":"$4"},{"slug":"TechBlog","title":"技术路线：人形机器人运动控制","date":"$D2026-03-17T00:00:00.000Z","category":"Humanoid","tags":["技术路线","Humanoid","强化学习"],"cover":"/TechBlog/wallhaven-vqd7z5.png","excerpt":"技术路线：人形机器人运动控制\n\n在这个具身智能的概念疯狂生长的年代，我写下这篇技术路线和一点自己的感想，既为自己的未来做规划，也为记录一些读研期间的思考。\n\n人形机器人作为近几年来实体行业炒得最热的概念，其本质究竟是一场技术革命，还是一次资本造势，并非本文讨论的重点。事实上，笔者也身处当局，既热忱于机器人事业，也迷茫于未来发展和选择。但殊涂同归，做一个领域就要尽力追求顶尖，谨以此文写下我的规划","content":"$5"},{"slug":"latex-support","title":"在博客中使用 LaTeX 公式","date":"$D2026-03-17T00:00:00.000Z","category":"技术教程","tags":["LaTeX","数学","KaTeX"],"cover":null,"excerpt":"LaTeX 公式支持\n\n本博客通过 KaTeX 支持完整的 LaTeX 数学公式渲染，使用方法与标准 LaTeX 一致。\n\n 行内公式\n\n使用单个美元符号  插入行内公式。\n\n例如，爱因斯坦质能方程 ，欧拉公式 ，或者二次方程求根公式 。\n\n 块级公式\n\n使用双美元符号  插入独立的块级公式：\n\n麦克斯韦方程组：\n\n\n\n\n\n\n\n\n\n高斯积分：\n\n\n\n矩阵：\n\n\n\n贝叶斯定理：\n\n\n\n傅里叶变换","content":"$6"},{"slug":"nextjs-static-blog","title":"Next.js 静态博客搭建指南","date":"$D2026-03-17T00:00:00.000Z","category":"技术教程","tags":["Next.js","博客","GitHub Pages"],"cover":null,"excerpt":"什么是静态博客？\n\n静态博客是指在构建时就生成所有 HTML 文件，无需服务器动态处理请求。这种方式有以下优势：\n\n- 🚀 超快速度：直接加载 HTML，无需数据库查询\n- 🔒 更安全：没有后端服务器，减少攻击面\n- 💰 免费托管：GitHub Pages 完全免费\n- 📱 SEO 友好：所有内容都是静态 HTML，搜索引擎易于索引\n\n 为什么选择 Next.js？\n\nNext.js","content":"$7"},{"slug":"welcome","title":"欢迎来到我的技术博客","date":"$D2026-03-17T00:00:00.000Z","category":"随笔","tags":["博客","介绍"],"cover":null,"excerpt":"你好，世界！👋\n\n欢迎来到这个技术博客。这里将记录我在学习和工作中积累的技术心得、踩过的坑以及一些有趣的发现。\n\n 这个博客能做什么？\n\n- Markdown 写作：完整支持 GFM（GitHub Flavored Markdown）语法\n- 代码高亮：支持多种编程语言的语法展示\n- 图片上传：拖拽或粘贴图片即可上传\n- 分类管理：通过分类和标签组织文章\n- 实时预览：编辑时随时切换预览模式","content":"$8"}]}],[["$","link","0",{"rel":"stylesheet","href":"/TechBlog/_next/static/css/f568bc7a75a2b533.css","precedence":"next","crossOrigin":"$undefined"}]]],null],null]},[[[["$","link","0",{"rel":"stylesheet","href":"/TechBlog/_next/static/css/2082a28c3ae0ae3e.css","precedence":"next","crossOrigin":"$undefined"}]],["$","html",null,{"lang":"zh-CN","children":[["$","head",null,{"children":[["$","link",null,{"rel":"preconnect","href":"https://fonts.googleapis.com"}],["$","link",null,{"rel":"preconnect","href":"https://fonts.gstatic.com","crossOrigin":"anonymous"}],["$","link",null,{"href":"https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap","rel":"stylesheet"}],["$","style",null,{"dangerouslySetInnerHTML":{"__html":"\n    body {\n      background-image:\n        linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.2)),\n        url('/TechBlog/wallhaven-e8996r.jpg');\n    }\n  "}}]]}],["$","body",null,{"children":["$","div",null,{"className":"app","children":[["$","$L9",null,{}],["$","main",null,{"className":"main-content","children":["$","$La",null,{"parallelRouterKey":"children","segmentPath":["children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$Lb",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":"404"}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],"notFoundStyles":[]}]}],["$","footer",null,{"className":"footer","children":["$","p",null,{"children":["© ",2026," 我的技术博客 · 用代码记录思考"]}]}]]}]}]]}]],null],null],["$Lc",null]]]]
+c:[["$","meta","0",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","1",{"charSet":"utf-8"}],["$","title","2",{"children":"技术博客"}],["$","meta","3",{"name":"description","content":"记录学习与探索，用文字沉淀技术"}]]
+1:null

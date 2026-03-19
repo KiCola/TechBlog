@@ -1,0 +1,163 @@
+2:I[2972,["972","static/chunks/972-0f0cbd81402c346b.js","333","static/chunks/app/posts/%5Bslug%5D/page-385e7c90f9aeb3f8.js"],""]
+4:I[4707,[],""]
+6:I[6423,[],""]
+7:I[2516,["972","static/chunks/972-0f0cbd81402c346b.js","185","static/chunks/app/layout-02a0f3db349a0c34.js"],"default"]
+3:T53f3,<h1>从HUGWBC学通强化学习运动控制</h1>
+<h2>项目背景</h2>
+<p><img src="/image-20260319134135511.png" alt="image-20260319134135511"></p>
+<p>HUGWBC是上海交通大学和AI Lab团队联合发表在RSS2025上的一篇关于通用人形机器人全身运动控制器的文章</p>
+<p><a href="https://arxiv.org/abs/2502.03206">https://arxiv.org/abs/2502.03206</a></p>
+<p>HUGWBC目前代码已开源，项目链接如下</p>
+<p><a href="https://hugwbc.github.io/">https://hugwbc.github.io/</a></p>
+<p>该项目主要通过强化学习，训练H1机器人全身运动，通过特殊的command设计，将多种步态融合进控制接口，通过发布不同指令实现机器人多步态的切换；同时，基于强化学习中奖励函数的设计，HUGWBC将行走、站立、双脚跳跃融合进了一个Policy中，让H1的Locomotion更加General和Versatile</p>
+<p>作为笔者第一个人形机器人项目，同时也是笔者的毕业设计，我拟结合代码完整地梳理一下HUGWBC的设计思路和构造，并尝试将其迁移到G1等机器人上，查看训练效果，最终目标是完成在G1等机器人的框架迁移、Sim2Sim和Sim2Real</p>
+<p>接下来，让我们走进HUGWBC，去看看强化学习视角下，人形机器人的控制设计。</p>
+<h2>走进HUGWBC</h2>
+<h3>概览</h3>
+<p><img src="/image-20260319135020462.png" alt="image-20260319135020462"></p>
+<p>运动作为人形机器人的一项基本技能，如何突破单一策略控制下运动单一、不可扩展的挑战，是人形机器人运控的一大主题。简单来说，就是如何最简洁高效地赋予人形机器人通用性的运动能力。</p>
+<p>在技术路线那篇文章中，我们提到，现有的工作方向主要是两个方面：</p>
+<ol>
+<li>通过强化学习，设计奖励函数和目标，通过奖励和正则化来“推拉”机器人学习到不会让自己摔倒、同时又能响应指令运动的策略网络(<code>Unitree_rl_gym</code>、<code>Humanoid_gym</code>、<code>HugWBC</code>)</li>
+<li>通过大规模的数据集做模仿学习，让机器人从Motion Tracking开始，有监督地掌握各项运动性能，并发挥在LLM领域大放异彩的Scaling Law(规模效应)和扩散模型、流匹配模型还有蒸馏的方法，将多个运动策略蒸馏到一个统一的Policy下，从而让机器人在大规模学习中提升运动的通用性（<code>BeyondMimic</code>、<code>SONIC</code>、<code>OmniXtreme</code>）</li>
+</ol>
+<p>在过去的五年时间里，技术整体上呈现一个先1后2的发展方向，我认为这主要是源自早期强化学习尤其是PPO在实体机器人部署上的成功以及数据集的匮乏所演变的自然结果，并在越来越多的资源投向具身智能领域、尤其是VLA后，后者在未来的应用领域会更大。</p>
+<p>在这个背景下，HUGWBC在一定程度上为传统的纯强化学习做了技术上的集成和扩展，作为人形机器人运动控制技能树上的一个枝桠，具有很高的学习和参考价值。</p>
+<h3>框架</h3>
+<p><img src="HugWBC/image-20260319141018406.png" alt="image-20260319141018406"></p>
+<p>上图是HUGWBC论文中展示的整体框架。我们简易拆分一下这个框架：</p>
+<p>1）左侧，框架展示了HUGWBC对单体机器人的控制指令的组成，主要有两个部分：Task Command 和 Behavior Command。其中，Task Command主要负责给出H1运动的各类任务指标，主要是<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0361em;vertical-align:-0.2861em;"></span><span class="mopen">[</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.22222em;">V</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.2222em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">x</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.22222em;">V</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.2222em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">y</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.22222em;">V</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.2222em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">y</span><span class="mord mathnormal mtight">a</span><span class="mord mathnormal mtight" style="margin-right:0.02691em;">w</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mclose">]</span></span></span></span>这三部分，也即发出机器人运动的线速度和角速度指令；Behavior Command则主要负责给出H1运动时的各种表现指令，主要是<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord mathnormal">os</span><span class="mord mathnormal">t</span><span class="mord mathnormal">u</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal">e</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">G</span><span class="mord mathnormal">ai</span><span class="mord mathnormal">t</span><span class="mclose">]</span></span></span></span>三个部分，其中<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal">t</span></span></span></span>主要包括<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal" style="margin-right:0.13889em;">tP</span><span class="mord mathnormal">ha</span><span class="mord mathnormal">se</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal">t</span><span class="mord mathnormal" style="margin-right:0.02778em;">D</span><span class="mord mathnormal">u</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal">a</span><span class="mord mathnormal">t</span><span class="mord mathnormal">i</span><span class="mord mathnormal">o</span><span class="mord mathnormal">n</span><span class="mclose">]</span></span></span></span>两项，分别给出机器人两足的相位差和接触/悬空的占空比；<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord mathnormal">os</span><span class="mord mathnormal">t</span><span class="mord mathnormal">u</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal">e</span></span></span></span>部分主要包括<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.13889em;">W</span><span class="mord mathnormal">ai</span><span class="mord mathnormal">s</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="mord mathnormal">o</span><span class="mord mathnormal">d</span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mord mathnormal" style="margin-right:0.08125em;">H</span><span class="mord mathnormal">e</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal">h</span><span class="mord mathnormal">t</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="mord mathnormal">o</span><span class="mord mathnormal">d</span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mord mathnormal" style="margin-right:0.13889em;">P</span><span class="mord mathnormal">i</span><span class="mord mathnormal">t</span><span class="mord mathnormal">c</span><span class="mord mathnormal">h</span><span class="mclose">]</span></span></span></span>，<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal">G</span><span class="mord mathnormal">ai</span><span class="mord mathnormal">t</span></span></span></span>则主要包括<span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal" style="margin-right:0.13889em;">tF</span><span class="mord mathnormal" style="margin-right:0.02778em;">r</span><span class="mord mathnormal">e</span><span class="mord mathnormal" style="margin-right:0.03588em;">q</span><span class="mord mathnormal">u</span><span class="mord mathnormal">e</span><span class="mord mathnormal">n</span><span class="mord mathnormal">ce</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mord mathnormal">oo</span><span class="mord mathnormal" style="margin-right:0.05764em;">tS</span><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="mord mathnormal">in</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal" style="margin-right:0.08125em;">H</span><span class="mord mathnormal">e</span><span class="mord mathnormal">i</span><span class="mord mathnormal" style="margin-right:0.03588em;">g</span><span class="mord mathnormal">h</span><span class="mord mathnormal">t</span><span class="mclose">]</span></span></span></span>。其中Foot和Gait部分感觉可以合并到一起，统称为机器人的步态。</p>
+<p><img src="HugWBC/image-20260319143719704.png" alt="image-20260319143719704"></p>
+<p>2）右侧，框架展示了HUGWBC上肢的干预——如果有遥操作或者其他外部操作给到上肢，上肢则通过Intervention Indicator给到策略接管上肢操作。在仿真环境中，也可以演示噪声接管下机器人的运动状态。</p>
+<p><img src="HugWBC/image-20260319143737888.png" alt="image-20260319143737888"></p>
+<p>总体来说这个框架在人形机器人强化学习运控中是非常有效的：一方面，通过指令集的有机结合，控制器可以响应指令给出机器人不同姿态的控制信号，让机器人执行对应的步态和姿态；另一方面，通过噪声课程学习，HUGWBC比较好地实现了上下半身的解耦，从而在上半身作出大规模动作时，下半身依旧能维持自身稳定状态，甚至在不同的步态下运动、平衡。</p>
+<p><font color=purple>做一些发散性的思考：如果在hugwbc的基础上再给机器人做更高层的规划，比如视觉语言动作模型，给出机器人到达点位的指令，让机器人平稳抵达目标位置，实质上就完成了很多实践当中的任务。当然这还是属于分层规划的范畴。</font></p>
+<p><font color=red>但总的来说，HUGWBC为机器人提供了一个更加统一通用的底层控制器，为后续很多任务的执行铺路，这也是笔者认为人形运控这个领域研究的核心意义——构建一个统一通用的运动模组</font></p>
+<h3>技术细节</h3>
+<p>如何关注一个强化学习工作的技术细节？经过笔者一段时间的摸索，我认为人形机器人强化学习领域的很多技术可以按如下视角入手</p>
+<h4>1.仿真环境设计</h4>
+<p>在强化学习算法迭代至今，核心算法大致定型，对于工程上的问题，如何实现一个仿真环境来给机器人做“交互”，成为许多强化学习工作要做的第一步。</p>
+<p>在文章中作者并为过多提及仿真环境设计的内容——这主要是因为HUGWBC关注的是机器人在常态条件下的行动能力，而非像楼梯那样的非结构化地形、或者像规定落脚点那样的特定任务场景。</p>
+<p>作者采用Isaac Gym模拟器，沿用了Legged_gym的设计</p>
+<h4>2.人形机器人配置</h4>
+<h5>结构</h5>
+<p><img src="HugWBC/image-20260319150850360.png" alt="image-20260319150850360"></p>
+<p>上图为HUGWBC使用的H1机器人，如图所示，H1共有19个关节，其中上肢有8个关节，腰部有1个关节，腿部有10个关节</p>
+<p><img src="HugWBC/062631298315422287588c3ed9562663_6580x4482.png" alt="img"></p>
+<p><img src="HugWBC/image-20260319155049637.png" alt="image-20260319155049637"></p>
+<p>这是官网上的H1说明</p>
+<p>作为一个人形机器人平台，H1的设计无疑是优秀的：较为稳定的机身，尽可能精简的全身关节，使得我们的强化学习可以跑在更加稳定的实体上</p>
+<h5>参数配置</h5>
+<p>我们这里的参数主要针对机器人的仿真参数和物理限制，主要就是PD和torque_limit</p>
+<pre><code class="language-python">    class control( LeggedRobotCfg.control ):
+        # PD Drive parameters:
+        control_type = &#39;P&#39;
+          # PD Drive parameters:
+        stiffness = {&#39;hip_yaw&#39;: 200,
+                     &#39;hip_roll&#39;: 200,
+                     &#39;hip_pitch&#39;: 200,
+                     &#39;knee&#39;: 300,
+                     &#39;ankle&#39;: 40,
+                     &#39;torso&#39;: 300,
+                     &#39;shoulder_pitch&#39;: 20,
+                     &#39;shoulder_roll&#39;: 20,
+                     &#39;shoulder_yaw&#39;: 20,
+                     &quot;elbow&quot;: 20,
+                     }  # [N*m/rad]
+        damping = {  &#39;hip_yaw&#39;: 5,
+                     &#39;hip_roll&#39;: 5,
+                     &#39;hip_pitch&#39;: 5,
+                     &#39;knee&#39;: 6,
+                     &#39;ankle&#39;: 2,
+                     &#39;torso&#39;: 6,
+                     &#39;shoulder_pitch&#39;: 0.5,
+                     &#39;shoulder_roll&#39;: 0.5,
+                     &#39;shoulder_yaw&#39;: 0.5,
+                     &quot;elbow&quot;: 0.5,
+                     }  # [N*m/rad]  # [N*m*s/rad]
+        torque_limits = {
+                     &#39;hip_yaw&#39;: 180,
+                     &#39;hip_roll&#39;: 180,
+                     &#39;hip_pitch&#39;: 180,
+                     &#39;knee&#39;: 280,
+                     &#39;ankle&#39;: 38,
+                     &#39;torso&#39;: 180,
+                     &#39;shoulder_pitch&#39;: 35,
+                     &#39;shoulder_roll&#39;: 35,
+                     &#39;shoulder_yaw&#39;: 15,
+                     &quot;elbow&quot;: 35,
+                     }
+        # action scale: target angle = actionScale * action + defaultAngle
+        action_scale = 0.25
+        # decimation: Number of control action updates @ sim DT per policy DT
+        decimation = 4
+</code></pre>
+<p>下面主要借着HUGWBC来学学PD参数</p>
+<h6>PD</h6>
+<p><img src="HugWBC/v2-62c56b1eb4c053d58894740a8ce250a0_1440w.jpg" alt="img"></p>
+<p>在HUGWBC中，PD参数在经历初始化后，传入到力矩计算单元：</p>
+<pre><code class="language-python">def _compute_torques(self, actions):
+    &quot;&quot;&quot; Compute torques from actions.
+        Actions can be interpreted as position or velocity targets given to a PD controller, or directly as scaled torques.
+        [NOTE]: torques must have the same dimension as the number of DOFs, even if some DOFs are not actuated.
+
+    Args:
+        actions (torch.Tensor): Actions
+
+    Returns:
+        [torch.Tensor]: Torques sent to the simulation
+    &quot;&quot;&quot;
+    #pd controller
+    actions_scaled = actions * self.cfg.control.action_scale
+    if self.cfg.domain_rand.randomize_gains:
+        p_gains = self.randomized_p_gains
+        d_gains = self.randomized_d_gains
+        motor_strength = self.randomized_motor_strength
+    else:
+        p_gains = self.p_gains.repeat(self.num_envs, 1)
+        d_gains = self.d_gains.repeat(self.num_envs, 1)
+        motor_strength = self.motor_strength
+    control_type = self.cfg.control.control_type
+    if control_type==&quot;P&quot;:
+        torques = p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos + self.motor_offsets) - d_gains*self.dof_vel
+    else:
+        raise NameError(f&quot;Unknown controller type: {control_type}&quot;)
+    
+    torques *= motor_strength
+    torque_limits = self.custom_torque_limits
+    return torch.clip(torques, -torque_limits, torque_limits)
+</code></pre>
+<p>核心部分当然是这段代码：</p>
+<pre><code class="language-python">torques = p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos + self.motor_offsets) - d_gains*self.dof_vel
+</code></pre>
+<p>这就是PD控制器的核心，其中，actions_scaled + self.default_dof_pos+ self.motor_offsets 表示目标位置，self.dof_pos表示关节当前位置，二者作差得到偏差值，作为比例项；self.dof_vel表示当前关节速度，给出负值是让它作为阻尼阻止关节的快速运动，从而减少超调和振荡</p>
+<p>显然，在这个计算中，我们默认了期望速度为0,这主要基于下面的考量：</p>
+<ul>
+<li><p>在每个控制周期内期望位置视为恒定；</p>
+</li>
+<li><p>微分项主要用来提供速度阻尼，而非提高跟踪精度；</p>
+</li>
+<li><p>策略输出的位置变化相对平滑，且控制频率足够高；</p>
+</li>
+<li><p>期望速度信息不可靠或非必需。</p>
+</li>
+</ul>
+<p>总而言之，通过PD参数设计，机器人将动作转化为力矩，继而通过下面的pipeline输入到仿真机器人或者实体机器人中：</p>
+<pre><code class="language-python">def step(self,actions):
+    #......
+    for _ in range(self.cfg.control.decimation):
+        self.torques = self._compute_torques(actions_after_push).view(self.torques.shape)
+        self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
+        self.gym.simulate(self.sim)
+    #......
+</code></pre>
+<p>最终通过gym的API将电机转矩送给仿真实体，让仿真的机器人动起来。</p>
+<p>可见，机器人的PD参数至关重要，在实践中，如果机器人的PD参数不合适，会有高频振荡抑或无法行动的情况发生，此时可能会触发仿真环境中机器人频繁的reset重置，从而使得机器人存活时间过低，强化学习训练必然失败。</p>
+<p>PD参数并非唯一一套参数，事实上只要是合理的PD参数，理论上能使机器人在仿真环境中正常存活、与环境进行交互的，都可以在机器人上做配置——HUGWBC中针对H1的PD配置就是如此。当然，也有工作专门针对机器人的PD参数做调整，比如<code>BeyondMimic</code>就根据G1电机的型号做了特殊配置，这一切的目的都是从配置层面上保证机器人运动的流畅性和鲁棒性。</p>
+<h4>3.奖励函数设计</h4>
+<h4>4.强化学习算法设计</h4>
+<h4>5.训练设计</h4>
+5:["slug","HugWBC","d"]
+0:["850Bi28titfQOUU_LyGkm",[[["",{"children":["posts",{"children":[["slug","HugWBC","d"],{"children":["__PAGE__?{\"slug\":\"HugWBC\"}",{}]}]}]},"$undefined","$undefined",true],["",{"children":["posts",{"children":[["slug","HugWBC","d"],{"children":["__PAGE__",{},[["$L1",["$","div",null,{"className":"post-detail","children":[["$","div",null,{"className":"post-nav","children":["$","$L2",null,{"href":"/","className":"back-link","children":"← 返回首页"}]}],["$","article",null,{"className":"post-article","children":[["$","div",null,{"className":"post-cover","children":["$","img",null,{"src":"/TechBlog/wallhaven-vqd8j8.jpg","alt":"从HUGWBC学通强化学习运控"}]}],["$","header",null,{"className":"post-header","children":[["$","div",null,{"className":"post-meta","children":[["$","span",null,{"className":"post-category","children":"Humanoid"}],["$","span",null,{"className":"post-date","children":"2026年3月19日"}]]}],["$","h1",null,{"className":"post-title","children":"从HUGWBC学通强化学习运控"}],["$","div",null,{"className":"post-tags","children":[["$","span","Humanoid",{"className":"tag","children":["#","Humanoid"]}],["$","span","强化学习",{"className":"tag","children":["#","强化学习"]}]]}]]}],["$","div",null,{"className":"post-content","dangerouslySetInnerHTML":{"__html":"$3"}}]]}]]}],[["$","link","0",{"rel":"stylesheet","href":"/TechBlog/_next/static/css/d92a9d23552d4657.css","precedence":"next","crossOrigin":"$undefined"}]]],null],null]},[null,["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children","posts","children","$5","children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","notFoundStyles":"$undefined"}]],null]},[null,["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children","posts","children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","notFoundStyles":"$undefined"}]],null]},[[[["$","link","0",{"rel":"stylesheet","href":"/TechBlog/_next/static/css/2082a28c3ae0ae3e.css","precedence":"next","crossOrigin":"$undefined"}]],["$","html",null,{"lang":"zh-CN","children":[["$","head",null,{"children":[["$","link",null,{"rel":"preconnect","href":"https://fonts.googleapis.com"}],["$","link",null,{"rel":"preconnect","href":"https://fonts.gstatic.com","crossOrigin":"anonymous"}],["$","link",null,{"href":"https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap","rel":"stylesheet"}],["$","style",null,{"dangerouslySetInnerHTML":{"__html":"\n    body {\n      background-image:\n        linear-gradient(rgba(13, 17, 23, 0.82), rgba(13, 17, 23, 0.2)),\n        url('/TechBlog/wallhaven-e8996r.jpg');\n    }\n  "}}]]}],["$","body",null,{"children":["$","div",null,{"className":"app","children":[["$","$L7",null,{}],["$","main",null,{"className":"main-content","children":["$","$L4",null,{"parallelRouterKey":"children","segmentPath":["children"],"error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L6",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":"404"}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],"notFoundStyles":[]}]}],["$","footer",null,{"className":"footer","children":["$","p",null,{"children":["© ",2026," 我的技术博客 · 用代码记录思考"]}]}]]}]}]]}]],null],null],["$L8",null]]]]
+8:[["$","meta","0",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","1",{"charSet":"utf-8"}],["$","title","2",{"children":"从HUGWBC学通强化学习运控 | 技术博客"}],["$","meta","3",{"name":"description","content":"从HUGWBC学通强化学习运动控制\n\n 项目背景\n\nimage-20260319134135511(/image-20260319134135511.png)\n\nHUGWBC是上海交通大学和AI Lab团队联合发表在RSS2025上的一篇关于通用人形机器人全身运动控制器的文章\n\nhttps://arxiv.org/abs/2502.03206\n\nHUGWBC目前代码已开源，项目链接如下\n\nht"}],["$","meta","4",{"property":"og:title","content":"从HUGWBC学通强化学习运控 | 技术博客"}],["$","meta","5",{"property":"og:description","content":"从HUGWBC学通强化学习运动控制\n\n 项目背景\n\nimage-20260319134135511(/image-20260319134135511.png)\n\nHUGWBC是上海交通大学和AI Lab团队联合发表在RSS2025上的一篇关于通用人形机器人全身运动控制器的文章\n\nhttps://arxiv.org/abs/2502.03206\n\nHUGWBC目前代码已开源，项目链接如下\n\nht"}],["$","meta","6",{"property":"og:image","content":"http://localhost:3000/TechBlog/wallhaven-vqd8j8.jpg"}],["$","meta","7",{"name":"twitter:card","content":"summary_large_image"}],["$","meta","8",{"name":"twitter:title","content":"从HUGWBC学通强化学习运控 | 技术博客"}],["$","meta","9",{"name":"twitter:description","content":"从HUGWBC学通强化学习运动控制\n\n 项目背景\n\nimage-20260319134135511(/image-20260319134135511.png)\n\nHUGWBC是上海交通大学和AI Lab团队联合发表在RSS2025上的一篇关于通用人形机器人全身运动控制器的文章\n\nhttps://arxiv.org/abs/2502.03206\n\nHUGWBC目前代码已开源，项目链接如下\n\nht"}],["$","meta","10",{"name":"twitter:image","content":"http://localhost:3000/TechBlog/wallhaven-vqd8j8.jpg"}]]
+1:null
